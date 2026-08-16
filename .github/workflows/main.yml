@@ -20,16 +20,19 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 📦 Instalar Gradle
+      - name: 📦 Generar Gradle Wrapper
         run: |
           sudo apt-get update
           sudo apt-get install -y gradle
-          gradle --version
+          gradle wrapper --gradle-version 8.2
+
+      - name: 🛠️ Dar permisos
+        run: chmod +x gradlew
 
       - name: 🔨 Compilar APK
-        run: gradle assembleDebug --stacktrace
+        run: ./gradlew assembleDebug
 
-      - name: 📦 Subir APK listo
+      - name: 📦 Subir APK
         uses: actions/upload-artifact@v4
         with:
           name: CesarinMax-APK
