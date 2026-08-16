@@ -163,11 +163,28 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "✅ Conectado a Cesarín Max", Toast.LENGTH_SHORT).show()
     }
 
+    // 🔑 AQUÍ ESTÁ LA SOLUCIÓN DEL BOTÓN ATRÁS
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
-        }
+        // 1. Primero le avisa a la web: cierra cualquier modal/ventana abierta
+        webView.evaluateJavascript("cerrarTodoModalAbierto();", null)
+
+        // 2. Espera un instante y luego navega hacia atrás en el historial
+        webView.postDelayed({
+            if (webView.canGoBack()) {
+                webView.goBack()
+            } else {
+                // 3. Si ya no hay nada atrás → confirma para salir
+                confirmarSalida()
+            }
+        }, 100)
+    }
+
+    private fun confirmarSalida() {
+        AlertDialog.Builder(this)
+            .setTitle("Salir de Cesarín Max")
+            .setMessage("¿Quieres cerrar la aplicación?")
+            .setPositiveButton("Sí") { _, _ -> finish() }
+            .setNegativeButton("No", null)
+            .show()
     }
 }
