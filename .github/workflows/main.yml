@@ -3,7 +3,7 @@ name: Build Android App
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:  # Permite lanzar a mano desde GitHub
+  workflow_dispatch:
 
 jobs:
   build:
@@ -20,11 +20,14 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 🛠️ Dar permisos de ejecución a Gradle
-        run: chmod +x gradlew
+      - name: 📦 Instalar Gradle
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gradle
+          gradle --version
 
       - name: 🔨 Compilar APK
-        run: ./gradlew assembleDebug
+        run: gradle assembleDebug --stacktrace
 
       - name: 📦 Subir APK listo
         uses: actions/upload-artifact@v4
