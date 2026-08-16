@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cesarín Max</string>
+    <string name="red_no_autorizada">Conéctate a la red WiFi Cesarín Max para usar esta aplicación.</string>
+    <string name="cerrar">Cerrar</string>
+</resources>
