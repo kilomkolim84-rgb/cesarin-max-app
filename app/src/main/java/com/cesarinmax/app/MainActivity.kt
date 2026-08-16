@@ -19,6 +19,9 @@ class MainActivity : AppCompatActivity() {
     private var ssidEsperado = "CESARINMAX"
     private var macRouterEsperado = "PONES-AQUI-TU-MAC-DESPUES"
 
+    // 🧪 MODO PRUEBA — CAMBIÁ A FALSE CUANDO TERMINES DE PROBAR
+    private val MODO_PRUEBA_SIEMPRE = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -54,13 +57,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun verificarRed(): Boolean {
-        // 🧪 MODO PRUEBA — salta la validación desde el Gist
-        val modoPrueba = configGist
+        // 🧪 MODO PRUEBA POR DEFECTO — no depende del Gist
+        if (MODO_PRUEBA_SIEMPRE) {
+            Toast.makeText(this, "🧪 Modo prueba activado", Toast.LENGTH_SHORT).show()
+            return true
+        }
+
+        // 🧪 MODO PRUEBA DESDE GIST
+        val modoPruebaGist = configGist
             ?.getJSONObject("config_red")
             ?.optBoolean("modo_prueba", false) == true
 
-        if (modoPrueba) {
-            Toast.makeText(this, "🧪 Modo prueba activado", Toast.LENGTH_SHORT).show()
+        if (modoPruebaGist) {
+            Toast.makeText(this, "🧪 Modo prueba desde Gist", Toast.LENGTH_SHORT).show()
             return true
         }
 
