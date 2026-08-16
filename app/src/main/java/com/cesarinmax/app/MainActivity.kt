@@ -16,7 +16,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private var configGist: JSONObject? = null
-    private var ssidEsperado = "Cesarín Max"
+    private var ssidEsperado = "CESARINMAX"
     private var macRouterEsperado = "PONES-AQUI-TU-MAC-DESPUES"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,8 +45,8 @@ class MainActivity : AppCompatActivity() {
             configGist = JSONObject(respuesta)
 
             val configRed = configGist?.getJSONObject("config_red")
-            ssidEsperado = configRed?.optString("ssid_esperado", "Cesarín Max")!!
-            macRouterEsperado = configRed?.optString("macRouter", "")!!
+            ssidEsperado = configRed?.optString("ssid_esperado", "CESARINMAX")!!
+            macRouterEsperado = configRed?.optString("mac_router", "")!!
 
         } catch (e: Exception) {
             e.printStackTrace()
@@ -54,6 +54,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun verificarRed(): Boolean {
+        // 🧪 MODO PRUEBA — salta la validación desde el Gist
+        val modoPrueba = configGist
+            ?.getJSONObject("config_red")
+            ?.optBoolean("modo_prueba", false) == true
+
+        if (modoPrueba) {
+            Toast.makeText(this, "🧪 Modo prueba activado", Toast.LENGTH_SHORT).show()
+            return true
+        }
+
+        // ✅ Validación normal
         val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val wifiInfo: WifiInfo = wifiManager.connectionInfo
 
