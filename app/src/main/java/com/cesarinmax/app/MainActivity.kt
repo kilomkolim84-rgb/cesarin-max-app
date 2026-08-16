@@ -22,10 +22,7 @@ class MainActivity : AppCompatActivity() {
     private var ssidEsperado = "CESARINMAX"
     private var macRouterEsperado = "PONES-AQUI-TU-MAC-DESPUES"
 
-    // 🧪 MODO PRUEBA — cambiá a false cuando termines
     private val MODO_PRUEBA_SIEMPRE = true
-
-    // 📷 Código de permiso de cámara
     private val REQUEST_CAMERA = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,9 +31,6 @@ class MainActivity : AppCompatActivity() {
 
         webView = findViewById(R.id.webView)
         configurarWebView()
-
-        // 📷 Pedir permiso de cámara al abrir
-        pedirPermisoCamara()
 
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
@@ -52,7 +46,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun pedirPermisoCamara() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-            != android.content.pm.PackageManager.PERMISSION_GRANTED
+            != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
                 this,
@@ -69,7 +63,7 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CAMERA) {
-            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "✅ Cámara habilitada", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this, "⚠️ Sin cámara no se puede escanear QR", Toast.LENGTH_LONG).show()
@@ -141,6 +135,7 @@ class MainActivity : AppCompatActivity() {
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
             setGeolocationEnabled(true)
+            userAgentString = userAgentString + " CesarinMaxApp/1.0"
         }
 
         webView.webViewClient = object : WebViewClient() {
@@ -149,15 +144,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 📷 Permitir acceso a cámara desde la web
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
-                request.grant(request.resources)
+                runOnUiThread { request.grant(request.resources) }
             }
         }
     }
 
     private fun cargarPortal() {
+        pedirPermisoCamara()
+
         val enlacePortal = configGist
             ?.getJSONObject("app")
             ?.optString("enlace_portal_web")
