@@ -1,13 +1,16 @@
 package com.cesarinmax.app
 
 import android.app.AlertDialog
-import android.content.Context
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.webkit.*
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.net.URL
@@ -19,8 +22,11 @@ class MainActivity : AppCompatActivity() {
     private var ssidEsperado = "CESARINMAX"
     private var macRouterEsperado = "PONES-AQUI-TU-MAC-DESPUES"
 
-    // 🧪 MODO PRUEBA — CAMBIÁ A FALSE CUANDO TERMINES DE PROBAR
+    // 🧪 MODO PRUEBA — cambiá a false cuando termines
     private val MODO_PRUEBA_SIEMPRE = true
+
+    // 📷 Código de permiso de cámara
+    private val REQUEST_CAMERA = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +34,9 @@ class MainActivity : AppCompatActivity() {
 
         webView = findViewById(R.id.webView)
         configurarWebView()
+
+        // 📷 Pedir permiso de cámara al abrir
+        pedirPermisoCamara()
 
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
@@ -37,6 +46,33 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     mostrarMensajeRedNoAutorizada()
                 }
+            }
+        }
+    }
+
+    private fun pedirPermisoCamara() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                REQUEST_CAMERA
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CAMERA) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "✅ Cámara habilitada", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "⚠️ Sin cámara no se puede escanear QR", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -57,13 +93,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun verificarRed(): Boolean {
-        // 🧪 MODO PRUEBA POR DEFECTO — no depende del Gist
         if (MODO_PRUEBA_SIEMPRE) {
             Toast.makeText(this, "🧪 Modo prueba activado", Toast.LENGTH_SHORT).show()
             return true
         }
 
-        // 🧪 MODO PRUEBA DESDE GIST
         val modoPruebaGist = configGist
             ?.getJSONObject("config_red")
             ?.optBoolean("modo_prueba", false) == true
@@ -73,8 +107,7 @@ class MainActivity : AppCompatActivity() {
             return true
         }
 
-        // ✅ Validación normal
-        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         val wifiInfo: WifiInfo = wifiManager.connectionInfo
 
         val ssidActual = wifiInfo.ssid
@@ -104,14 +137,24 @@ class MainActivity : AppCompatActivity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             allowFileAccess = true
+            allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
+            cacheMode = WebSettings.LOAD_DEFAULT
+            setGeolocationEnabled(true)
         }
+
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
             }
         }
-        webView.webChromeClient = android.webkit.WebChromeClient()
+
+        // 📷 Permitir acceso a cámara desde la web
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                request.grant(request.resources)
+            }
+        }
     }
 
     private fun cargarPortal() {
