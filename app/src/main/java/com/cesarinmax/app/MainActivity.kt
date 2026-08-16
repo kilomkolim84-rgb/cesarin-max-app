@@ -2,15 +2,12 @@ package com.cesarinmax.app
 
 import android.app.AlertDialog
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.webkit.*
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.database.*
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.net.URL
@@ -18,7 +15,6 @@ import java.net.URL
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
-    private lateinit var db: FirebaseDatabase
     private var configGist: JSONObject? = null
     private var ssidEsperado = "Cesarín Max"
     private var macRouterEsperado = "PONES-AQUI-TU-MAC-DESPUES"
@@ -26,8 +22,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        db = FirebaseDatabase.getInstance()
 
         webView = findViewById(R.id.webView)
         configurarWebView()
@@ -52,7 +46,7 @@ class MainActivity : AppCompatActivity() {
 
             val configRed = configGist?.getJSONObject("config_red")
             ssidEsperado = configRed?.optString("ssid_esperado", "Cesarín Max")!!
-            macRouterEsperado = configRed?.optString("mac_router", "")!!
+            macRouterEsperado = configRed?.optString("macRouter", "")!!
 
         } catch (e: Exception) {
             e.printStackTrace()
@@ -67,13 +61,11 @@ class MainActivity : AppCompatActivity() {
             .replace("\"", "")
             .replace("<unknown ssid>", "")
 
-        val macActual = wifiInfo.bssid ?: ""
-
-        // Si todavía no tenés la MAC, la app deja pasar (comentá la línea de abajo cuando tengas tu MAC)
         if (macRouterEsperado == "PONES-AQUI-TU-MAC-DESPUES" || macRouterEsperado.isBlank()) {
             return ssidActual.equals(ssidEsperado, ignoreCase = true)
         }
 
+        val macActual = wifiInfo.bssid ?: ""
         return ssidActual.equals(ssidEsperado, ignoreCase = true) &&
                macActual.equals(macRouterEsperado, ignoreCase = true)
     }
