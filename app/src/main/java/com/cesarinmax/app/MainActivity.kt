@@ -19,7 +19,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private var configGist: JSONObject? = null
-    private var ssidEsperado = "CESARINMAX"
+    private var ssidEsperado = "Cesarín Max"
     private var macRouterEsperado = "PONES-AQUI-TU-MAC-DESPUES"
 
     private val MODO_PRUEBA_SIEMPRE = true
@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
             configGist = JSONObject(respuesta)
 
             val configRed = configGist?.getJSONObject("config_red")
-            ssidEsperado = configRed?.optString("ssid_esperado", "CESARINMAX")!!
+            ssidEsperado = configRed?.optString("ssid_esperado", "Cesarín Max")!!
             macRouterEsperado = configRed?.optString("mac_router", "")!!
 
         } catch (e: Exception) {
@@ -163,28 +163,28 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "✅ Conectado a Cesarín Max", Toast.LENGTH_SHORT).show()
     }
 
-    // 🔑 AQUÍ ESTÁ LA SOLUCIÓN DEL BOTÓN ATRÁS
+    // 🔑 BOTÓN ATRÁS CON AVISO DE SALIDA
     override fun onBackPressed() {
-        // 1. Primero le avisa a la web: cierra cualquier modal/ventana abierta
-        webView.evaluateJavascript("cerrarTodoModalAbierto();", null)
-
-        // 2. Espera un instante y luego navega hacia atrás en el historial
-        webView.postDelayed({
-            if (webView.canGoBack()) {
-                webView.goBack()
-            } else {
-                // 3. Si ya no hay nada atrás → confirma para salir
-                confirmarSalida()
-            }
-        }, 100)
+        // Si hay páginas atrás en el WebView → va hacia atrás
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            // Si ya está en la primera página → muestra el aviso
+            mostrarDialogoSalir()
+        }
     }
 
-    private fun confirmarSalida() {
+    private fun mostrarDialogoSalir() {
         AlertDialog.Builder(this)
-            .setTitle("Salir de Cesarín Max")
-            .setMessage("¿Quieres cerrar la aplicación?")
-            .setPositiveButton("Sí") { _, _ -> finish() }
-            .setNegativeButton("No", null)
+            .setTitle("🚪 Salir de la aplicación")
+            .setMessage("¿Deseas salir de Cesarín Max?")
+            .setCancelable(false) // No deja cerrar tocando fuera
+            .setPositiveButton("✅ Aceptar") { _, _ ->
+                finishAffinity() // Cierra la app completa
+            }
+            .setNegativeButton("❌ Cancelar") { dialog, _ ->
+                dialog.dismiss() // Se queda en la app
+            }
             .show()
     }
 }
