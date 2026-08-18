@@ -19,7 +19,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private var configGist: JSONObject? = null
-    private var ssidEsperado = "Cesarín Max"
+    private var ssidEsperado = "CESARINMAX"
     private var macRouterEsperado = "PONES-AQUI-TU-MAC-DESPUES"
 
     private val MODO_PRUEBA_SIEMPRE = true
@@ -73,12 +73,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun cargarConfigGist() {
         try {
-            val url = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/1077573cadcdc04760bc9dc0484ae0753b14650d/cesarin_max_config.json"
+            val url = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/f688d75e856d4570a0f9056aeac2513dc71d8491/cesarin_max_config.json"
             val respuesta = URL(url).readText()
             configGist = JSONObject(respuesta)
 
             val configRed = configGist?.getJSONObject("config_red")
-            ssidEsperado = configRed?.optString("ssid_esperado", "Cesarín Max")!!
+            ssidEsperado = configRed?.optString("ssid_esperado", "CESARINMAX")!!
             macRouterEsperado = configRed?.optString("mac_router", "")!!
 
         } catch (e: Exception) {
@@ -133,10 +133,13 @@ class MainActivity : AppCompatActivity() {
             allowFileAccess = true
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
-            cacheMode = WebSettings.LOAD_DEFAULT
+            cacheMode = WebSettings.LOAD_NO_CACHE // ✅ Nunca usa caché
             setGeolocationEnabled(true)
             userAgentString = userAgentString + " CesarinMaxApp/1.0"
         }
+
+        webView.clearCache(true)
+        webView.clearHistory()
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -157,19 +160,16 @@ class MainActivity : AppCompatActivity() {
         val enlacePortal = configGist
             ?.getJSONObject("app")
             ?.optString("enlace_portal_web")
-            ?: "https://tranquil-kheer-9d576f.netlify.app/"
+            ?: "https://dulcet-pudding-45f043.netlify.app/?v=1"
 
         webView.loadUrl(enlacePortal)
         Toast.makeText(this, "✅ Conectado a Cesarín Max", Toast.LENGTH_SHORT).show()
     }
 
-    // 🔑 BOTÓN ATRÁS CON AVISO DE SALIDA
     override fun onBackPressed() {
-        // Si hay páginas atrás en el WebView → va hacia atrás
         if (webView.canGoBack()) {
             webView.goBack()
         } else {
-            // Si ya está en la primera página → muestra el aviso
             mostrarDialogoSalir()
         }
     }
@@ -178,12 +178,12 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("🚪 Salir de la aplicación")
             .setMessage("¿Deseas salir de Cesarín Max?")
-            .setCancelable(false) // No deja cerrar tocando fuera
+            .setCancelable(false)
             .setPositiveButton("✅ Aceptar") { _, _ ->
-                finishAffinity() // Cierra la app completa
+                finishAffinity()
             }
             .setNegativeButton("❌ Cancelar") { dialog, _ ->
-                dialog.dismiss() // Se queda en la app
+                dialog.dismiss()
             }
             .show()
     }
