@@ -44,6 +44,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ✅ Pausa audio/video al minimizar
+    override fun onPause() {
+        super.onPause()
+        webView.onPause()
+        webView.evaluateJavascript("document.querySelectorAll('audio,video').forEach(el => el.pause());", null)
+    }
+
+    // ✅ Reanuda al volver
+    override fun onResume() {
+        super.onResume()
+        webView.onResume()
+    }
+
+    // ✅ Corte total al cerrar la app
+    override fun onDestroy() {
+        webView.evaluateJavascript("document.querySelectorAll('audio,video').forEach(el => { el.pause(); el.currentTime = 0; });", null)
+        webView.stopLoading()
+        webView.removeAllViews()
+        webView.destroy()
+        super.onDestroy()
+    }
+
     private fun pedirPermisoCamara() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
@@ -133,7 +155,7 @@ class MainActivity : AppCompatActivity() {
             allowFileAccess = true
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
-            cacheMode = WebSettings.LOAD_NO_CACHE // ✅ Nunca usa caché
+            cacheMode = WebSettings.LOAD_NO_CACHE
             setGeolocationEnabled(true)
             userAgentString = userAgentString + " CesarinMaxApp/1.0"
         }
@@ -166,11 +188,30 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "✅ Conectado a Cesarín Max", Toast.LENGTH_SHORT).show()
     }
 
+    // ✅ BOTÓN ATRÁS INTELIGENTE → cierra ruleta antes de salir
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            mostrarDialogoSalir()
+        webView.evaluateJavascript(
+            """
+            (function(){
+                if(typeof cerrarVentanaDesdeApp === 'function'){
+                    return cerrarVentanaDesdeApp() ? 'cerrado' : 'no_ventana';
+                }
+                return 'no_ventana';
+            })()
+            """.trimIndent()
+        ) { resultado ->
+            val resp = resultado.removeSurrounding("\"")
+            when {
+                resp == "cerrado" -> {
+                    // ✅ La web cerró la ventana (ruleta) → no hacemos nada
+                }
+                webView.canGoBack() -> {
+                    webView.goBack()
+                }
+                else -> {
+                    mostrarDialogoSalir()
+                }
+            }
         }
     }
 
@@ -180,6 +221,7 @@ class MainActivity : AppCompatActivity() {
             .setMessage("¿Deseas salir de Cesarín Max?")
             .setCancelable(false)
             .setPositiveButton("✅ Aceptar") { _, _ ->
+                webView.evaluateJavascript("document.querySelectorAll('audio,video').forEach(el => { el.pause(); el.currentTime = 0; });", null)
                 finishAffinity()
             }
             .setNegativeButton("❌ Cancelar") { dialog, _ ->
