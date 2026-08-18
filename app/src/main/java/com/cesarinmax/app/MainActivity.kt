@@ -2,7 +2,9 @@ package com.cesarinmax.app
 
 import android.app.AlertDialog
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
@@ -11,9 +13,15 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.firebase.database.FirebaseDatabase
+import com.google.zxing.BarcodeFormat
+import com.zxing.android.Contents
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,6 +32,10 @@ class MainActivity : AppCompatActivity() {
 
     private val MODO_PRUEBA_SIEMPRE = true
     private val REQUEST_CAMERA = 1001
+
+    // Datos de configuración cargados del Gist
+    private var numeroAdminWhatsapp = "+51974634113"
+    private var enlaceGrupoWhatsapp = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,20 +56,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ Pausa audio/video al minimizar
+    // ==============================================
+    // ✅ PAUSA / CORTE DE AUDIO AL SALIR / MINIMIZAR
+    // ==============================================
     override fun onPause() {
         super.onPause()
         webView.onPause()
         webView.evaluateJavascript("document.querySelectorAll('audio,video').forEach(el => el.pause());", null)
     }
 
-    // ✅ Reanuda al volver
     override fun onResume() {
         super.onResume()
         webView.onResume()
     }
 
-    // ✅ Corte total al cerrar la app
     override fun onDestroy() {
         webView.evaluateJavascript("document.querySelectorAll('audio,video').forEach(el => { el.pause(); el.currentTime = 0; });", null)
         webView.stopLoading()
@@ -66,6 +78,9 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    // ==============================================
+    // 📋 PERMISOS
+    // ==============================================
     private fun pedirPermisoCamara() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
@@ -93,6 +108,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ==============================================
+    // 🌐 CARGA DE CONFIGURACIÓN DESDE GIST
+    // ==============================================
     private fun cargarConfigGist() {
         try {
             val url = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/f688d75e856d4570a0f9056aeac2513dc71d8491/cesarin_max_config.json"
@@ -103,11 +121,19 @@ class MainActivity : AppCompatActivity() {
             ssidEsperado = configRed?.optString("ssid_esperado", "CESARINMAX")!!
             macRouterEsperado = configRed?.optString("mac_router", "")!!
 
+            // Cargar datos de WhatsApp
+            val configApp = configGist?.getJSONObject("app")
+            numeroAdminWhatsapp = configApp?.optString("numero_admin_whatsapp", "+51974634113")!!
+            enlaceGrupoWhatsapp = configApp?.optString("enlace_grupo_whatsapp", "")!!
+
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
+    // ==============================================
+    // 📶 VERIFICACIÓN DE RED WiFi
+    // ==============================================
     private fun verificarRed(): Boolean {
         if (MODO_PRUEBA_SIEMPRE) {
             Toast.makeText(this, "🧪 Modo prueba activado", Toast.LENGTH_SHORT).show()
@@ -148,6 +174,9 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    // ==============================================
+    // 🌐 CONFIGURACIÓN DEL WEBVIEW + PUENTE JS ↔ KOTLIN
+    // ==============================================
     private fun configurarWebView() {
         webView.settings.apply {
             javaScriptEnabled = true
@@ -163,6 +192,9 @@ class MainActivity : AppCompatActivity() {
         webView.clearCache(true)
         webView.clearHistory()
 
+        // ✅ PUENTE: La web puede llamar a funciones de la app
+        webView.addJavascriptInterface(WebAppInterface(this), "Android")
+
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
@@ -176,6 +208,150 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ==============================================
+    // 🎟️ PUENTE — La web llama a estas funciones
+    // ==============================================
+    inner class WebAppInterface(private val contexto: MainActivity) {
+        @JavascriptInterface
+        fun premioGanado(jsonPremio: String) {
+            val premio = JSONObject(jsonPremio)
+            val tipo = premio.optString("tipo", "ninguno")
+            val nombre = premio.optString("nombre", "Premio")
+            val minutos = premio.optInt("minutos", 0)
+            val prefijo = premio.optString("prefijo_codigo", "")
+
+            when (tipo) {
+                "internet" -> crearTicketTiempo(minutos, nombre, prefijo)
+                "producto", "recarga" -> enviarPremioPorWhatsApp(nombre, tipo, prefijo)
+                else -> Toast.makeText(contexto, "Ganaste: $nombre", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // ==============================================
+    // 🎟️ CREAR TICKET DE TIEMPO EN FIREBASE
+    // ==============================================
+    private fun crearTicketTiempo(minutos: Int, nombrePremio: String, prefijo: String) {
+        val codigo = generarCodigo6Digitos(prefijo)
+        val fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+
+        val ticket = hashMapOf(
+            "codigo" to codigo,
+            "tiempo_minutos" to minutos,
+            "monto" to 0.0,
+            "fecha" to fecha,
+            "nombre_premio" to nombrePremio,
+            "origen" to "RULETA",
+            "leido_por_ticket" to false,
+            "leido_por_monedero" to false,
+            "leido_por_portal" to false
+        )
+
+        FirebaseDatabase.getInstance().reference
+            .child("historial")
+            .child(codigo)
+            .setValue(ticket)
+            .addOnSuccessListener {
+                mostrarDialogoPremioTiempo(codigo, minutos, nombrePremio)
+            }
+            .addOnFailureListener { err ->
+                Toast.makeText(this, "❌ Error: ${err.message}", Toast.LENGTH_LONG).show()
+            }
+    }
+
+    // ==============================================
+    // 📱 MOSTRAR CÓDIGO Y OPCIONES AL GANAR TIEMPO
+    // ==============================================
+    private fun mostrarDialogoPremioTiempo(codigo: String, minutos: Int, nombre: String) {
+        val minutosStr = if (minutos >= 60) {
+            val h = minutos / 60
+            val m = minutos % 60
+            if (m > 0) "${h}h ${m}m" else "${h} horas"
+        } else {
+            "$minutos min"
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("🎉 ¡GANASTE!")
+            .setMessage("🏆 $nombre\n\nCódigo: $codigo\n⏱️ Tiempo: $minutosStr\n\nEscaneá el código en el local o compartilo.")
+            .setPositiveButton("📤 COMPARTIR CÓDIGO") { _, _ ->
+                compartirCodigo(codigo, nombre, minutosStr)
+            }
+            .setNegativeButton("✅ LISTO", null)
+            .show()
+    }
+
+    // ==============================================
+    // 📲 ENVIAR PREMIO POR WHATSAPP (productos / recargas)
+    // ==============================================
+    private fun enviarPremioPorWhatsApp(nombrePremio: String, tipo: String, prefijo: String) {
+        val codigo = generarCodigoCorto(prefijo)
+        val tipoStr = when (tipo) {
+            "producto" -> "Producto"
+            "recarga" -> "Recarga / Diamantes"
+            else -> "Premio"
+        }
+
+        val mensaje = """
+            🎉 ¡GANASTE EN LA RULETA CESARÍN MAX!
+            
+            🏆 Premio: $nombrePremio
+            📦 Tipo: $tipoStr
+            🔢 Código de canje: $codigo
+            
+            Por favor coordina la entrega.
+        """.trimIndent()
+
+        val numero = numeroAdminWhatsapp.replace("+", "").replace(" ", "")
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse("https://api.whatsapp.com/send?phone=$numero&text=${Uri.encode(mensaje)}")
+        }
+
+        try {
+            startActivity(intent)
+            Toast.makeText(this, "✅ Abriendo WhatsApp...", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "❌ No tienes WhatsApp instalado", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // ==============================================
+    // 🔢 GENERADORES DE CÓDIGOS
+    // ==============================================
+    private fun generarCodigo6Digitos(prefijo: String = ""): String {
+        val numeros = (100000..999999).random().toString()
+        return if (prefijo.isNotEmpty()) "$prefijo-$numeros" else numeros
+    }
+
+    private fun generarCodigoCorto(prefijo: String = ""): String {
+        val caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        val aleatorio = (1..4).map { caracteres.random() }.joinToString("")
+        return if (prefijo.isNotEmpty()) "$prefijo-$aleatorio" else aleatorio
+    }
+
+    // ==============================================
+    // 📤 COMPARTIR CÓDIGO
+    // ==============================================
+    private fun compartirCodigo(codigo: String, nombre: String, tiempo: String) {
+        val texto = """
+            🎟️ Código de canje — Cesarín Max
+            🏆 Premio: $nombre
+            🔢 Código: $codigo
+            ⏱️ Tiempo: $tiempo
+            
+            ¡Canjéalo en el local!
+        """.trimIndent()
+
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, texto)
+        }
+        startActivity(Intent.createChooser(intent, "Compartir código"))
+    }
+
+    // ==============================================
+    // 📂 CARGAR PORTAL WEB
+    // ==============================================
     private fun cargarPortal() {
         pedirPermisoCamara()
 
@@ -188,7 +364,9 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "✅ Conectado a Cesarín Max", Toast.LENGTH_SHORT).show()
     }
 
-    // ✅ BOTÓN ATRÁS INTELIGENTE → cierra ruleta antes de salir
+    // ==============================================
+    // 🔙 BOTÓN ATRÁS INTELIGENTE
+    // ==============================================
     override fun onBackPressed() {
         webView.evaluateJavascript(
             """
@@ -202,15 +380,9 @@ class MainActivity : AppCompatActivity() {
         ) { resultado ->
             val resp = resultado.removeSurrounding("\"")
             when {
-                resp == "cerrado" -> {
-                    // ✅ La web cerró la ventana (ruleta) → no hacemos nada
-                }
-                webView.canGoBack() -> {
-                    webView.goBack()
-                }
-                else -> {
-                    mostrarDialogoSalir()
-                }
+                resp == "cerrado" -> { }
+                webView.canGoBack() -> webView.goBack()
+                else -> mostrarDialogoSalir()
             }
         }
     }
@@ -224,9 +396,7 @@ class MainActivity : AppCompatActivity() {
                 webView.evaluateJavascript("document.querySelectorAll('audio,video').forEach(el => { el.pause(); el.currentTime = 0; });", null)
                 finishAffinity()
             }
-            .setNegativeButton("❌ Cancelar") { dialog, _ ->
-                dialog.dismiss()
-            }
+            .setNegativeButton("❌ Cancelar") { dialog, _ -> dialog.dismiss() }
             .show()
     }
 }
