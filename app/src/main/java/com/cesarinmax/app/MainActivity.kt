@@ -1,7 +1,6 @@
 package com.cesarinmax.app
 
 import android.app.AlertDialog
-import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -126,7 +125,28 @@ class MainActivity : AppCompatActivity() {
         }
         webView.clearCache(true)
         webView.addJavascriptInterface(WebAppInterface(this), "Android")
-        webView.webViewClient = object : WebViewClient() {}
+
+        // ✅ AQUÍ ESTÁ EL FIX DE WHATSAPP
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                url ?: return false
+                return when {
+                    // Interceptar enlaces de WhatsApp
+                    url.startsWith("whatsapp://") || url.startsWith("https://api.whatsapp.com")
+                            || url.startsWith("https://wa.me/") -> {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(this@MainActivity, "❌ WhatsApp no instalado", Toast.LENGTH_LONG).show()
+                        }
+                        true // ← Decirle al WebView: no cargues esto, ya lo abrí yo
+                    }
+                    else -> false // ← Todo lo demás cargalo normal
+                }
+            }
+        }
+
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(r: PermissionRequest) {
                 runOnUiThread { r.grant(r.resources) }
@@ -142,9 +162,15 @@ class MainActivity : AppCompatActivity() {
             val nombre = p.optString("nombre", "Premio")
             val minutos = p.optInt("minutos", 0)
             val prefijo = p.optString("prefijo_codigo", "")
+
             when (tipo) {
+                // ⏰ Tiempo de internet → genera ticket en Firebase
                 "internet" -> ctx.crearTicketTiempo(minutos, nombre, prefijo)
+
+                // 📦 Productos y recargas → van a WhatsApp
                 "producto", "recarga" -> ctx.enviarPorWhatsApp(nombre, tipo, prefijo)
+
+                // Otros premios
                 else -> Toast.makeText(ctx, "Ganaste: $nombre", Toast.LENGTH_SHORT).show()
             }
         }
@@ -164,6 +190,7 @@ class MainActivity : AppCompatActivity() {
             "leido_por_monedero" to false,
             "leido_por_portal" to false
         )
+
         FirebaseDatabase.getInstance().reference
             .child("historial")
             .child(codigo)
@@ -185,7 +212,7 @@ class MainActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle("🎉 ¡GANASTE!")
-            .setMessage("🏆 $nombre\n\nCódigo: $codigo\n⏱️ Tiempo: $tiempoStr")
+            .setMessage("🏆 $nombre\n\n🔢 Código: $codigo\n⏱️ Tiempo: $tiempoStr\n\nGuarda este código o compártelo.")
             .setPositiveButton("📤 COMPARTIR") { _, _ -> compartir(codigo, nombre, tiempoStr) }
             .setNegativeButton("✅ LISTO", null)
             .show()
@@ -195,9 +222,10 @@ class MainActivity : AppCompatActivity() {
         val codigo = generarCodigoCorto(prefijo)
         val tipoStr = when (tipo) {
             "producto" -> "Producto"
-            "recarga" -> "Recarga/Diamantes"
+            "recarga" -> "Recarga / Diamantes"
             else -> "Premio"
         }
+
         val msj = """
             🎉 ¡GANASTE EN LA RULETA CESARINMAX!
             
@@ -205,15 +233,18 @@ class MainActivity : AppCompatActivity() {
             📦 Tipo: $tipoStr
             🔢 Código: $codigo
             
-            Coordinar entrega.
+            Por favor coordina la entrega.
         """.trimIndent()
 
-        val num = numeroAdminWhatsapp.replace("+", "")
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$num&text=${Uri.encode(msj)}"))
+        val num = numeroAdminWhatsapp.replace("+", "").replace(" ", "")
+        val intent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://api.whatsapp.com/send?phone=$num&text=${Uri.encode(msj)}")
+        )
         try {
             startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(this, "❌ WhatsApp no instalado", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "❌ WhatsApp no instalado", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -229,12 +260,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun compartir(codigo: String, nombre: String, tiempo: String) {
-        val txt = "🎟️ CESARINMAX\n🏆 $nombre\n🔢 Código: $codigo\n⏱️ $tiempo\n¡Canjéalo en el local!"
+        val txt = """
+            🎟️ CESARINMAX — Código de canje
+            🏆 Premio: $nombre
+            🔢 Código: $codigo
+            ⏱️ Tiempo: $tiempo
+            
+            ¡Canjéalo en el local!
+        """.trimIndent()
+
         val i = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, txt)
         }
-        startActivity(Intent.createChooser(i, "Compartir"))
+        startActivity(Intent.createChooser(i, "Compartir código"))
     }
 
     private fun cargarPortal() {
@@ -257,7 +296,7 @@ class MainActivity : AppCompatActivity() {
         ) { res ->
             val r = res.removeSurrounding("\"")
             when {
-                r == "\"cerrado\"" -> {}
+                r == "cerrado" -> {}
                 webView.canGoBack() -> webView.goBack()
                 else -> salir()
             }
