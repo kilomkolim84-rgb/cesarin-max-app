@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -41,4 +42,8 @@ dependencies {
 
     // Navegador web para cargar el portal
     implementation("androidx.webkit:webkit:1.8.0")
+
+    // Generación de códigos QR
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 }
