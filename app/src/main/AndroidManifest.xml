@@ -36,4 +36,11 @@
         </activity>
     </application>
 
+    <!-- ✅ BLOQUE NUEVO: Permitir abrir WhatsApp desde la app -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        
+    </queries>
+
 </manifest>
