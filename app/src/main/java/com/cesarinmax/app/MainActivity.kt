@@ -221,8 +221,8 @@ class MainActivity : AppCompatActivity() {
             val prefijo = premio.optString("prefijo_codigo", "")
 
             when (tipo) {
-                "internet" -> crearTicketTiempo(minutos, nombre, prefijo)
-                "producto", "recarga" -> enviarPremioPorWhatsApp(nombre, tipo, prefijo)
+                "internet" -> contexto.crearTicketTiempo(minutos, nombre, prefijo)
+                "producto", "recarga" -> contexto.enviarPremioPorWhatsApp(nombre, tipo, prefijo)
                 else -> Toast.makeText(contexto, "Ganaste: $nombre", Toast.LENGTH_SHORT).show()
             }
         }
@@ -231,7 +231,7 @@ class MainActivity : AppCompatActivity() {
     // ==============================================
     // 🎟️ CREAR TICKET DE TIEMPO EN FIREBASE
     // ==============================================
-    private fun crearTicketTiempo(minutos: Int, nombrePremio: String, prefijo: String) {
+    fun crearTicketTiempo(minutos: Int, nombrePremio: String, prefijo: String) {
         val codigo = generarCodigo6Digitos(prefijo)
         val fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
 
@@ -266,7 +266,7 @@ class MainActivity : AppCompatActivity() {
         val minutosStr = if (minutos >= 60) {
             val h = minutos / 60
             val m = minutos % 60
-            if (m > 0) "${h}h ${m}m" else "${h} horas"
+            if (m > 0) "$h h $m m" else "$h horas"
         } else {
             "$minutos min"
         }
@@ -284,7 +284,7 @@ class MainActivity : AppCompatActivity() {
     // ==============================================
     // 📲 ENVIAR PREMIO POR WHATSAPP (productos / recargas)
     // ==============================================
-    private fun enviarPremioPorWhatsApp(nombrePremio: String, tipo: String, prefijo: String) {
+    fun enviarPremioPorWhatsApp(nombrePremio: String, tipo: String, prefijo: String) {
         val codigo = generarCodigoCorto(prefijo)
         val tipoStr = when (tipo) {
             "producto" -> "Producto"
@@ -293,7 +293,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val mensaje = """
-            🎉 ¡GANASTE EN LA RULETA CESARÍN MAX!
+            🎉 ¡GANASTE EN LA RULETA CESARINMAX!
             
             🏆 Premio: $nombrePremio
             📦 Tipo: $tipoStr
@@ -334,7 +334,7 @@ class MainActivity : AppCompatActivity() {
     // ==============================================
     private fun compartirCodigo(codigo: String, nombre: String, tiempo: String) {
         val texto = """
-            🎟️ Código de canje — Cesarín Max
+            🎟️ Código de canje — CESARINMAX
             🏆 Premio: $nombre
             🔢 Código: $codigo
             ⏱️ Tiempo: $tiempo
@@ -361,7 +361,7 @@ class MainActivity : AppCompatActivity() {
             ?: "https://dulcet-pudding-45f043.netlify.app/?v=1"
 
         webView.loadUrl(enlacePortal)
-        Toast.makeText(this, "✅ Conectado a Cesarín Max", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "✅ Conectado a CESARINMAX", Toast.LENGTH_SHORT).show()
     }
 
     // ==============================================
@@ -390,7 +390,7 @@ class MainActivity : AppCompatActivity() {
     private fun mostrarDialogoSalir() {
         AlertDialog.Builder(this)
             .setTitle("🚪 Salir de la aplicación")
-            .setMessage("¿Deseas salir de Cesarín Max?")
+            .setMessage("¿Deseas salir de CESARINMAX?")
             .setCancelable(false)
             .setPositiveButton("✅ Aceptar") { _, _ ->
                 webView.evaluateJavascript("document.querySelectorAll('audio,video').forEach(el => { el.pause(); el.currentTime = 0; });", null)
