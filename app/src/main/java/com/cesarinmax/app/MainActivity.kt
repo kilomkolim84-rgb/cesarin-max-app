@@ -143,6 +143,7 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
         webView.clearCache(true)
+        webView.clearHistory()
         webView.addJavascriptInterface(WebAppInterface(this), "Android")
 
         webView.webViewClient = object : WebViewClient() {
@@ -331,8 +332,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun cargarPortal() {
         pedirPermisoCamara()
+        
+        // ✅ BORRA TODO ANTES DE CARGAR — SIEMPRE TRAE LO NUEVO
+        webView.clearCache(true)
+        webView.clearHistory()
+        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
+        
         val url = configGist?.getJSONObject("app")?.optString("enlace_portal_web")
-            ?: "https://poetic-dodol-629897.netlify.app/?v=1"
+            ?: "https://poetic-dodol-629897.netlify.app/?v=2"
         webView.loadUrl(url)
         Toast.makeText(this, "✅ Conectado a CESARINMAX", Toast.LENGTH_SHORT).show()
     }
