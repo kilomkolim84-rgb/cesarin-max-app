@@ -35,7 +35,6 @@ class MainActivity : AppCompatActivity() {
     private val REQUEST_CAMERA = 1001
     private var numeroAdminWhatsapp = "+51974634113"
 
-    // Para pantalla completa de videos
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var originalSystemUiVisibility: Int = 0
@@ -44,7 +43,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
-        // Mantener pantalla encendida mientras la app está activa
         window.decorView.keepScreenOn = true
 
         webView = findViewById(R.id.webView)
@@ -61,7 +59,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Detener TODO audio/video al perder el foco
         webView.evaluateJavascript(
             "document.querySelectorAll('video, audio').forEach(el => { el.pause(); });",
             null
@@ -148,7 +145,6 @@ class MainActivity : AppCompatActivity() {
         webView.clearCache(true)
         webView.addJavascriptInterface(WebAppInterface(this), "Android")
 
-        // ✅ Interceptar enlaces externos (WhatsApp, etc.)
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 url ?: return false
@@ -168,7 +164,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // ✅ Pantalla completa de videos + permisos
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
                 runOnUiThread { request.grant(request.resources) }
@@ -189,7 +184,6 @@ class MainActivity : AppCompatActivity() {
                     ViewGroup.LayoutParams.MATCH_PARENT
                 ))
 
-                // Ocultar barras en pantalla completa
                 window.decorView.systemUiVisibility = (
                     View.SYSTEM_UI_FLAG_FULLSCREEN or
                     View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -214,7 +208,6 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             
-            // Filtrar solo apps que puedan manejar este enlace
             val resoluciones: List<ResolveInfo> = packageManager.queryIntentActivities(intent, 0)
             if (resoluciones.isNotEmpty()) {
                 startActivity(intent)
@@ -339,13 +332,12 @@ class MainActivity : AppCompatActivity() {
     private fun cargarPortal() {
         pedirPermisoCamara()
         val url = configGist?.getJSONObject("app")?.optString("enlace_portal_web")
-            ?: "https://dulcet-pudding-45f043.netlify.app/?v=1"
+            ?: "https://poetic-dodol-629897.netlify.app/?v=1"
         webView.loadUrl(url)
         Toast.makeText(this, "✅ Conectado a CESARINMAX", Toast.LENGTH_SHORT).show()
     }
 
     override fun onBackPressed() {
-        // Si hay pantalla completa activa, hay que cerrarla primero
         if (customView != null) {
             webView.webChromeClient?.onHideCustomView()
             return
