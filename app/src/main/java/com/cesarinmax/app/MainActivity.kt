@@ -4,11 +4,15 @@ import android.app.AlertDialog
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
 import android.webkit.*
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -31,9 +35,18 @@ class MainActivity : AppCompatActivity() {
     private val REQUEST_CAMERA = 1001
     private var numeroAdminWhatsapp = "+51974634113"
 
+    // Para pantalla completa de videos
+    private var customView: View? = null
+    private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private var originalSystemUiVisibility: Int = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        
+        // Mantener pantalla encendida mientras la app está activa
+        window.decorView.keepScreenOn = true
+
         webView = findViewById(R.id.webView)
         configurarWebView()
 
@@ -48,8 +61,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        // Detener TODO audio/video al perder el foco
+        webView.evaluateJavascript(
+            "document.querySelectorAll('video, audio').forEach(el => { el.pause(); });",
+            null
+        )
         webView.onPause()
-        webView.evaluateJavascript("document.querySelectorAll('audio,video').forEach(el=>el.pause());", null)
     }
 
     override fun onResume() {
@@ -58,7 +75,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        webView.evaluateJavascript("document.querySelectorAll('audio,video').forEach(el=>{el.pause();el.currentTime=0;});", null)
+        webView.evaluateJavascript(
+            "document.querySelectorAll('video, audio').forEach(el => { el.pause(); el.currentTime = 0; });",
+            null
+        )
         webView.stopLoading()
         webView.removeAllViews()
         webView.destroy()
@@ -123,35 +143,86 @@ class MainActivity : AppCompatActivity() {
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_NO_CACHE
             userAgentString = userAgentString + " CESARINMAX/1.0"
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
         webView.clearCache(true)
         webView.addJavascriptInterface(WebAppInterface(this), "Android")
 
-        // ✅ AQUÍ ESTÁ EL FIX DE WHATSAPP
+        // ✅ Interceptar enlaces externos (WhatsApp, etc.)
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 url ?: return false
+                val u = url.lowercase()
                 return when {
-                    // Interceptar enlaces de WhatsApp
-                    url.startsWith("whatsapp://") || url.startsWith("https://api.whatsapp.com")
-                            || url.startsWith("https://wa.me/") -> {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            startActivity(intent)
-                        } catch (e: Exception) {
-                            Toast.makeText(this@MainActivity, "❌ WhatsApp no instalado", Toast.LENGTH_LONG).show()
-                        }
-                        true // ← Decirle al WebView: no cargues esto, ya lo abrí yo
+                    u.startsWith("whatsapp://") || u.startsWith("https://api.whatsapp.com") ||
+                    u.startsWith("https://wa.me/") || u.startsWith("https://chat.whatsapp.com/") -> {
+                        abrirEnlaceExterno(url)
+                        true
                     }
-                    else -> false // ← Todo lo demás cargalo normal
+                    u.startsWith("tel:") || u.startsWith("mailto:") -> {
+                        abrirEnlaceExterno(url)
+                        true
+                    }
+                    else -> false
                 }
             }
         }
 
+        // ✅ Pantalla completa de videos + permisos
         webView.webChromeClient = object : WebChromeClient() {
-            override fun onPermissionRequest(r: PermissionRequest) {
-                runOnUiThread { r.grant(r.resources) }
+            override fun onPermissionRequest(request: PermissionRequest) {
+                runOnUiThread { request.grant(request.resources) }
             }
+
+            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                if (customView != null) {
+                    callback?.onCustomViewHidden()
+                    return
+                }
+                customView = view
+                customViewCallback = callback
+                originalSystemUiVisibility = window.decorView.systemUiVisibility
+
+                val decor = window.decorView as FrameLayout
+                decor.addView(view, FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                ))
+
+                // Ocultar barras en pantalla completa
+                window.decorView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                )
+            }
+
+            override fun onHideCustomView() {
+                val decor = window.decorView as FrameLayout
+                customView?.let { decor.removeView(it) }
+                customViewCallback?.onCustomViewHidden()
+                customView = null
+                customViewCallback = null
+                window.decorView.systemUiVisibility = originalSystemUiVisibility
+            }
+        }
+    }
+
+    private fun abrirEnlaceExterno(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            
+            // Filtrar solo apps que puedan manejar este enlace
+            val resoluciones: List<ResolveInfo> = packageManager.queryIntentActivities(intent, 0)
+            if (resoluciones.isNotEmpty()) {
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "❌ No hay aplicación para abrir este enlace", Toast.LENGTH_LONG).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "❌ Error: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -165,13 +236,8 @@ class MainActivity : AppCompatActivity() {
             val prefijo = p.optString("prefijo_codigo", "")
 
             when (tipo) {
-                // ⏰ Tiempo de internet → genera ticket en Firebase
                 "internet" -> ctx.crearTicketTiempo(minutos, nombre, prefijo)
-
-                // 📦 Productos y recargas → van a WhatsApp
                 "producto", "recarga" -> ctx.enviarPorWhatsApp(nombre, tipo, prefijo)
-
-                // Otros premios
                 else -> Toast.makeText(ctx, "Ganaste: $nombre", Toast.LENGTH_SHORT).show()
             }
         }
@@ -238,15 +304,8 @@ class MainActivity : AppCompatActivity() {
         """.trimIndent()
 
         val num = numeroAdminWhatsapp.replace("+", "").replace(" ", "")
-        val intent = Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("https://api.whatsapp.com/send?phone=$num&text=${Uri.encode(msj)}")
-        )
-        try {
-            startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(this, "❌ WhatsApp no instalado", Toast.LENGTH_LONG).show()
-        }
+        val enlace = "https://api.whatsapp.com/send?phone=$num&text=${Uri.encode(msj)}"
+        abrirEnlaceExterno(enlace)
     }
 
     private fun generarCodigo(prefijo: String): String {
@@ -286,6 +345,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
+        // Si hay pantalla completa activa, hay que cerrarla primero
+        if (customView != null) {
+            webView.webChromeClient?.onHideCustomView()
+            return
+        }
+
         webView.evaluateJavascript(
             """
             (function(){
