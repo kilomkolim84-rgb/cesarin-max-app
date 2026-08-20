@@ -86,7 +86,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun cargarConfigGist() {
         try {
-            val url = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/f688d75e856d4570a0f9056aeac2513dc71d8491/cesarin_max_config.json"
+            val url = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/a9d9d0b01d4b98944aeb18a53b25f55cb9fa816e/cesarin_max_config.json"
             configGist = JSONObject(URL(url).readText())
             val cr = configGist?.getJSONObject("config_red")
             ssidEsperado = cr?.optString("ssid_esperado", "CESARINMAX")!!
@@ -247,8 +247,9 @@ Por favor coordina la entrega.""".trimIndent()
         pedirPermisoCamara()
         webView.clearCache(true)
         webView.clearHistory()
-        val url = configGist?.getJSONObject("app")?.optString("enlace_portal_web")
+        val baseUrl = configGist?.getJSONObject("app")?.optString("enlace_portal_web")
             ?: "https://poetic-dodol-629897.netlify.app/"
+        val url = if (baseUrl.contains("?")) "$baseUrl&t=${System.currentTimeMillis()}" else "$baseUrl?t=${System.currentTimeMillis()}"
         webView.loadUrl(url)
         Toast.makeText(this, "✅ Conectado a CESARINMAX", Toast.LENGTH_SHORT).show()
     }
