@@ -86,8 +86,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun cargarConfigGist() {
         try {
-            val url = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/a9d9d0b01d4b98944aeb18a53b25f55cb9fa816e/cesarin_max_config.json"
-            configGist = JSONObject(URL(url).readText())
+            val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/a9d9d0b01d4b98944aeb18a53b25f55cb9fa816e/cesarin_max_config.json?t=" + System.currentTimeMillis()
+            configGist = JSONObject(URL(urlGist).readText())
             val cr = configGist?.getJSONObject("config_red")
             ssidEsperado = cr?.optString("ssid_esperado", "CESARINMAX")!!
             macRouterEsperado = cr?.optString("mac_router", "")!!
