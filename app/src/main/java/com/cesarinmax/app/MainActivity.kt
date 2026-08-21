@@ -2,6 +2,7 @@ package com.cesarinmax.app
 
 import android.app.AlertDialog
 import android.Manifest
+import android.content.pm.ActivityInfo
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
@@ -38,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var originalSystemUiVisibility: Int = 0
+    private var orientacionOriginal: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -115,6 +117,17 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun ponerPantallaCompletaHorizontal() {
+        orientacionOriginal = requestedOrientation
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+    }
+
+    private fun salirPantallaCompleta() {
+        requestedOrientation = orientacionOriginal
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+    }
+
     private fun configurarWebView() {
         webView.settings.apply {
             javaScriptEnabled = true
@@ -125,8 +138,6 @@ class MainActivity : AppCompatActivity() {
             cacheMode = WebSettings.LOAD_NO_CACHE
             userAgentString = userAgentString + " CESARINMAX/1.0"
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            
-            // ✅ CLAVE: Permite que el HTML local se conecte a Firebase/Gist
             setAllowUniversalAccessFromFileURLs(true)
         }
         webView.clearCache(true)
@@ -154,20 +165,29 @@ class MainActivity : AppCompatActivity() {
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) = runOnUiThread { request.grant(request.resources) }
+
             override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
                 if (customView != null) { callback?.onCustomViewHidden(); return }
-                customView = view; customViewCallback = callback
+                customView = view
+                customViewCallback = callback
                 originalSystemUiVisibility = window.decorView.systemUiVisibility
                 val decor = window.decorView as FrameLayout
                 decor.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
+                
+                // ✅ GIRA AUTOMÁTICO A HORIZONTAL 16:9
+                ponerPantallaCompletaHorizontal()
             }
+
             override fun onHideCustomView() {
                 val decor = window.decorView as FrameLayout
                 customView?.let { decor.removeView(it) }
                 customViewCallback?.onCustomViewHidden()
-                customView = null; customViewCallback = null
+                customView = null
+                customViewCallback = null
                 window.decorView.systemUiVisibility = originalSystemUiVisibility
+                
+                // ✅ VUELVE A ORIENTACIÓN NORMAL
+                salirPantallaCompleta()
             }
         }
     }
@@ -251,8 +271,6 @@ Por favor coordina la entrega.""".trimIndent()
         pedirPermisoCamara()
         webView.clearCache(true)
         webView.clearHistory()
-        
-        // ✅ AHORA CARGA DESDE ADENTRO DE LA APP — NO MÁS NETLIFY
         webView.loadUrl("file:///android_asset/index.html")
         Toast.makeText(this, "✅ Conectado a CESARINMAX", Toast.LENGTH_SHORT).show()
     }
