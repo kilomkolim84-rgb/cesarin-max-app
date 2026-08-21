@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>🎡 RULETA DE PREMIOS — CESARÍNMAX</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body {
+            background: #000;
+            background-image: radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 40px 40px, 20px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 15px;
+            color: white;
+        }
+        h1 { font-size: 22px; margin-bottom: 15px; color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.4); }
+        canvas { filter: drop-shadow(0 0 12px rgba(255,215,0,0.3)); max-width: 100%; }
+        button { border: none; padding: 12px 30px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin: 8px; width: 260px; }
+        .btn-girar { background: linear-gradient(90deg, #ffd700, #ffb300); color: #000; margin-top: 20px; box-shadow: 0 0 8px rgba(255,215,0,0.4); }
+        .btn-girar:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; }
+        .btn-reclamar { background: linear-gradient(90deg, #22c55e, #10b981); color: white; display: none; box-shadow: 0 0 8px rgba(34,197,94,0.4); }
+        #resultado { margin-top: 15px; font-size: 18px; font-weight: bold; min-height: 45px; padding: 12px; border-radius: 12px; background: rgba(20,20,20,0.7); border: 1px solid rgba(255,215,0,0.3); width: 300px; text-align: center; }
+        .cargando { color: #ffcc00; font-size: 14px; margin-bottom: 10px; }
+        #zonaCodigo { display: none; margin-top: 20px; padding: 15px; background: #111; border-radius: 16px; border: 3px solid #ffd700; width: 340px; box-shadow: 0 0 20px rgba(255,215,0,0.2); position: relative; }
+        .btn-cerrar { position: absolute; top: 6px; right: 10px; background: transparent; color: #888; border: none; font-size: 20px; width: auto; padding: 0; cursor: pointer; line-height: 1; }
+        .btn-cerrar:hover { color: #ff4444; }
+        .fila-codigo { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .qr-lado { width: 90px; height: 90px; background: white; padding: 5px; border-radius: 8px; }
+        .texto-lado { flex: 1; text-align: center; }
+        .etiqueta-canje { color: #aaa; font-size: 14px; margin-bottom: 4px; }
+        .codigo-valor { color: #00ff88; font-size: 22px; font-weight: bold; letter-spacing: 1px; }
+        .contenedor-botones { display: flex; flex-direction: column; gap: 8px; margin-top: 0; }
+        .btn-usar { background: linear-gradient(90deg, #ffd700, #ffb300); color: #000; width: 100%; margin: 0; padding: 10px; font-size: 15px; }
+        .btn-compartir { background: linear-gradient(90deg, #25d366, #128c7e); color: white; width: 100%; margin: 0; padding: 10px; font-size: 15px; }
+    </style>
+</head>
+<body>
+    <h1>🎡 RULETA DE PREMIOS</h1>
+    <div class="cargando" id="estadoCarga">⏳ Cargando premios del servidor...</div>
+    <canvas id="canvas" width="500" height="500"></canvas>
+    <div id="resultado"></div>
+    <button class="btn-girar" id="spin">🎰 GIRAR S/ 0.50</button>
+    <button class="btn-reclamar" id="btnReclamar">📲 RECLAMAR PREMIO</button>
+    <div id="zonaCodigo">
+        <button class="btn-cerrar" onclick="cerrarZonaCodigo()">&times;</button>
+        <div class="fila-codigo">
+            <img id="imagenQR" class="qr-lado" src="" alt="QR">
+            <div class="texto-lado">
+                <p class="etiqueta-canje">Código de canje</p>
+                <p class="codigo-valor" id="textoCodigo"></p>
+            </div>
+        </div>
+        <div class="contenedor-botones">
+            <button class="btn-usar" onclick="usarCodigo()">✅ USAR</button>
+            <button class="btn-compartir" onclick="compartirPorWhatsApp()">📤 COMPARTIR</button>
+        </div>
+    </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+  import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
+  const firebaseConfig = {
+    apiKey: "AIzaSyBaqL0W7vriiRAS74z0-qz5eQvLro1HsqA",
+    authDomain: "ciber-cesarin.firebaseapp.com",
+    databaseURL: "https://ciber-cesarin-default-rtdb.firebaseio.com",
+    projectId: "ciber-cesarin",
+    storageBucket: "ciber-cesarin.firebasestorage.app",
+    messagingSenderId: "547043055918",
+    appId: "1:547043055918:web:f4c627b147b4103b6282bf"
+  };
+  const app = initializeApp(firebaseConfig);
+  window.db = getDatabase(app);
+  window.dbRef = ref;
+  window.dbSet = set;
+  window.firebaseReady = true;
+</script>
+
+<script>
+let premios = [];
+let configRuleta = {};
+let startAngle = 0;
+let arc = 0;
+let spinTimeout = null;
+let spinTime = 0;
+let spinTimeTotal = 0;
+let ctx;
+let girando = false;
+let premioGanado = null;
+let codigoGenerado = "";
+
+async function generarCodigoYGuardar(premio) {
+    const prefijo = premio.prefijo_codigo || "COD";
+    const codigo = prefijo + "-" + Math.floor(100000 + Math.random() * 900000);
+    const fecha = new Date().toISOString();
+    if (window.firebaseReady && window.db) {
+        try {
+            const refDB = window.dbRef(window.db, 'historial/' + codigo);
+            await window.dbSet(refDB, { 
+                codigo, 
+                premio: premio.nombre, 
+                tipo: premio.tipo,
+                minutos: premio.minutos || 0, 
+                usado: false, 
+                fechaGenerado: fecha 
+            });
+        } catch (e) {}
+    }
+    return codigo;
+}
+
+function mostrarCodigoEnPantalla(codigo) {
+    codigoGenerado = codigo;
+    document.getElementById("textoCodigo").textContent = codigo;
+    document.getElementById("imagenQR").src = "https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=" + encodeURIComponent(codigo);
+    document.getElementById("zonaCodigo").style.display = "block";
+    setTimeout(() => document.getElementById("zonaCodigo").scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+}
+
+function cerrarZonaCodigo() { 
+    codigoGenerado = ""; 
+    document.getElementById("zonaCodigo").style.display = "none"; 
+}
+
+async function usarCodigo() {
+    if (!codigoGenerado) return;
+    if (window.firebaseReady && window.db) {
+        try {
+            const refDB = window.dbRef(window.db, 'historial/' + codigoGenerado);
+            await window.dbSet(refDB, { usado: true, fechaUsado: new Date().toISOString() });
+        } catch (e) {}
+    }
+    cerrarZonaCodigo();
+}
+
+function compartirPorWhatsApp() {
+    if (!codigoGenerado) return;
+    const msj = `🎟️ CESARÍNMAX — Código: ${codigoGenerado}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msj)}`, "_blank");
+}
+
+async function cargarPremios() {
+    try {
+        const url = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + Date.now();
+
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error("Error cargando premios");
+        const datos = await res.json();
+        premios = datos.ruleta.premios;
+        configRuleta = datos.ruleta;
+        arc = (2 * Math.PI) / premios.length;
+        document.getElementById("estadoCarga").textContent = "✅ Premios cargados: " + premios.length + " premios";
+        setTimeout(() => document.getElementById("estadoCarga").style.display = "none", 2000);
+        drawRouletteWheel();
+    } catch (e) {
+        document.getElementById("estadoCarga").textContent = "⚠️ Error: " + e.message;
+        console.error("Error cargando premios:", e);
+    }
+}
+
+document.getElementById("spin").addEventListener("click", spin);
+document.getElementById("btnReclamar").addEventListener("click", reclamarPremio);
+
+function drawRouletteWheel() {
+    const canvas = document.getElementById("canvas");
+    if (!canvas.getContext || premios.length === 0) return;
+    const outsideRadius = 200, textRadius = 135, insideRadius = 50;
+    ctx = canvas.getContext("2d");
+    ctx.clearRect(0,0,500,500);
+    ctx.strokeStyle = "black"; ctx.lineWidth = 2;
+    ctx.font = 'bold 9px Arial, "Noto Color Emoji", sans-serif';
+    
+    for (let i = 0; i < premios.length; i++) {
+        const angle = startAngle + i * arc;
+        const angleEnd = angle + arc;
+        ctx.beginPath();
+        ctx.arc(250, 250, outsideRadius, angle, angleEnd, false);
+        ctx.arc(250, 250, insideRadius, angleEnd, angle, true);
+        ctx.closePath();
+        ctx.fillStyle = premios[i].color;
+        ctx.fill(); ctx.stroke();
+        ctx.save();
+        ctx.translate(250, 250);
+        ctx.rotate(angle + arc / 2);
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.fillText(premios[i].nombre, textRadius, 4);
+        ctx.restore();
+    }
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(250, 20); ctx.lineTo(230, 0); ctx.lineTo(270, 0); ctx.closePath();
+    ctx.fillStyle = "#000"; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(250, 16); ctx.lineTo(236, 0); ctx.lineTo(264, 0); ctx.closePath();
+    ctx.fillStyle = "#ffd700"; ctx.shadowColor = "#ffd700"; ctx.shadowBlur = 20; ctx.fill();
+    ctx.restore();
+}
+
+function spin() {
+    if (girando || premios.length === 0) return;
+    girando = true;
+    document.getElementById("spin").disabled = true;
+    document.getElementById("spin").textContent = "🎰 Girando...";
+    document.getElementById("resultado").textContent = "";
+    document.getElementById("btnReclamar").style.display = "none";
+    document.getElementById("zonaCodigo").style.display = "none";
+    spinTime = 0;
+    spinTimeTotal = Math.random() * 2000 + 4000;
+    rotateWheel();
+}
+
+function rotateWheel() {
+    spinTime += 30;
+    if (spinTime >= spinTimeTotal) { stopRotateWheel(); return; }
+    const spinArc = 10 - (spinTime / spinTimeTotal) * 10;
+    startAngle += spinArc * Math.PI / 180;
+    drawRouletteWheel();
+    spinTimeout = setTimeout(rotateWheel, 30);
+}
+
+async function stopRotateWheel() {
+    clearTimeout(spinTimeout);
+    const degrees = startAngle * 180 / Math.PI + 90;
+    const arcd = arc * 180 / Math.PI;
+    const index = Math.floor((360 - degrees % 360) / arcd) % premios.length;
+    premioGanado = premios[index];
+    
+    ctx.save();
+    ctx.font = 'bold 20px Arial, "Noto Color Emoji", sans-serif';
+    ctx.fillStyle = "#fff"; ctx.shadowColor = "#ffcc00"; ctx.shadowBlur = 10;
+    const texto = premioGanado.nombre;
+    ctx.fillText(texto, 250 - ctx.measureText(texto).width / 2, 258);
+    ctx.restore();
+    
+    document.getElementById("resultado").textContent = "🎉 " + premioGanado.nombre;
+    document.getElementById("spin").disabled = false;
+    document.getElementById("spin").textContent = "🎰 GIRAR S/ 0.50";
+    
+    if (premioGanado.tipo === "internet") {
+        const codigo = await generarCodigoYGuardar(premioGanado);
+        mostrarCodigoEnPantalla(codigo);
+    } else if (premioGanado.tipo === "producto" || premioGanado.tipo === "recarga") {
+        document.getElementById("btnReclamar").style.display = "inline-block";
+    }
+    
+    girando = false;
+}
+
+function reclamarPremio() {
+    if (!premioGanado) return;
+    const numero = "51974634113";
+    const msg = `🎉 ¡GANASTE EN CESARÍNMAX!\n🏆 Premio: ${premioGanado.nombre}\nPor favor coordina la entrega.`;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, "_blank");
+}
+
+cargarPremios();
+</script>
+</body>
+</html>

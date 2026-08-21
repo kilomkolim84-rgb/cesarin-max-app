@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RESPONDER CLIENTES</title>
+<style>
+body{background:#111;color:#fff;font-family:Arial;padding:20px;max-width:420px;margin:auto;}
+h2{text-align:center;color:#00ff99;}
+input,textarea{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:none;font-size:16px;}
+button{width:100%;padding:14px;background:#0099ff;color:#fff;border:none;border-radius:8px;font-weight:bold;font-size:18px;}
+button:hover{background:#00ccff;}
+</style>
+</head>
+<body>
+<h2>📩 ENVIAR RESPUESTA</h2>
+<input type="number" id="idCliente" placeholder="NÚMERO DEL CLIENTE (ej: 1089)">
+<textarea id="textoRespuesta" rows="4" placeholder="ESCRIBE AQUÍ LO QUE LE VAS A DECIR"></textarea>
+<button onclick="enviar()">✅ ENVIAR RESPUESTA</button>
+
+<script>
+const URL = "https://ciber-cesarin-default-rtdb.firebaseio.com/respuestas/";
+function enviar(){
+  const id = document.getElementById('idCliente').value.trim();
+  const txt = document.getElementById('textoRespuesta').value.trim();
+  if(!id || !txt){ alert("LLENA AMBOS CAMPOS"); return; }
+
+  fetch(URL + id + ".json", {
+    method: "PUT",
+    body: JSON.stringify({ texto: txt }),
+    headers: { "Content-Type": "application/json" }
+  })
+  .then(r => {
+    if(r.ok){ alert("✅ ENVIADO CORRECTAMENTE"); document.getElementById('textoRespuesta').value = ''; }
+    else alert("❌ ERROR AL ENVIAR");
+  })
+}
+</script>
+</body>
+</html>

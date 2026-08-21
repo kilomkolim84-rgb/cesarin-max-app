@@ -1,0 +1,2134 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>CIBER CESARÍN - ACCESO</title>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+<script>
+let reproductorActivo = null;
+let hlsActivo = null;
+</script>
+
+<style>
+
+  * { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
+
+body { margin:0; padding:0; width:100%; min-height:100vh; color:#fff; text-align:center; overflow-x:hidden; overflow-y:auto; }
+
+#videoFondo { position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:-2; }
+
+.contenedor { max-width:420px; margin:0 auto; position:relative; z-index:1; }
+
+.logo-principal { width:100%; max-width:400px; height:auto; margin:10px auto 25px auto; display:block; filter:drop-shadow(0 0 10px rgba(0,255,255,0.5)); }
+
+.zona-clave { position:relative; margin-bottom:20px; display:flex; align-items:center; justify-content:center; width:75%; margin-left:auto; margin-right:auto; }
+
+input { width:100%; padding:14px 50px 14px 15px; border:3px solid #ff2222; border-radius:8px; font-size:18px; text-align:center; background:#000; color:#00ffff; text-shadow:0 0 8px #00ffff; font-weight:bold; }
+
+input::placeholder { color:#00ffff; text-shadow:0 0 6px #00ffff; }
+
+input:focus { outline:none; border-color:#ff4444; box-shadow:0 0 12px rgba(255,0,0,0.4); }
+
+.boton-ver { position:absolute; right:15px; font-size:24px; color:#ffcc00; cursor:pointer; text-shadow:0 0 6px #ffcc00; user-select:none; }
+
+.dedo-indicador { position:absolute; left:-32px; font-size:35px; color:#ffcc00; animation: señalando 1s infinite alternate; text-shadow:0 0 6px #ffcc00; transform:rotate(-20deg); }
+
+@keyframes señalando { from { transform:rotate(-25deg) translateX(-3px); } to { transform:rotate(-15deg) translateX(3px); } }
+
+.boton-principal, .boton-vivo { border:none; padding:14px 24px; font-size:18px; font-weight:bold; border-radius:8px; cursor:pointer; transition:transform 0.2s; width:90%; margin:0 auto 12px auto; display:block; }
+
+.boton-principal { background:linear-gradient(90deg,#ff0000,#ff4444,#ff6666); color:#fff; box-shadow:0 0 12px rgba(255,0,0,0.5); }
+
+.boton-vivo { background:linear-gradient(90deg,#009933,#00ff55); color:#fff; box-shadow:0 0 20px rgba(255,255,80,0.8); text-shadow:0 0 8px rgba(255,255,255,0.9); }
+
+.boton-principal:hover, .boton-vivo:hover { transform:scale(1.03); }
+
+.boton-yape {
+
+  background:#8a2595;
+
+  border:5px solid #FFCC00;
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  padding:2px;
+
+  border-radius:10px;
+
+  cursor:pointer;
+
+  transition:transform 0.2s;
+
+  width:75%; /* Antes era 90%, ahora más angosto */
+
+  height:90px; /* Tamaño justo, no gigante */
+
+  margin:6px auto;
+
+  overflow:hidden;
+
+}
+
+.logo-boton-yape {
+
+  width:100%;
+
+  height:100%;
+
+  object-fit:contain;
+
+  background:#8a2595; /* Mismo color de fondo para que coincida */
+
+}
+
+#ventanaYape {
+
+  display:none;
+
+  position:fixed;
+
+  inset:0;
+
+  z-index:9999;
+
+  padding:15px;
+
+  overflow-y:auto;
+
+  background:rgba(0,0,0,0.95);
+
+}
+
+.caja-yape {
+
+  background:#992299;
+
+  border-radius:15px;
+
+  padding:25px;
+
+  max-width:380px;
+
+  width:100%;
+
+  margin:20px auto;
+
+  border:3px solid #FFCC00;
+
+  color:#ffffff;
+
+  font-size:15px;
+
+  line-height:1.6;
+
+}
+
+.titulo-yape {
+
+  font-size:20px;
+
+  font-weight:bold;
+
+  text-align:center;
+
+  margin-bottom:15px;
+
+  color:#FFCC00;
+
+}
+
+.aviso-tiempo {
+
+  background:rgba(255,255,255,0.15);
+
+  padding:10px;
+
+  border-radius:8px;
+
+  margin-bottom:15px;
+
+  text-align:center;
+
+}
+
+.espacio-qr {
+
+  width:220px;
+
+  height:220px;
+
+  background:#ffffff;
+
+  border-radius:10px;
+
+  margin:0 auto 15px auto;
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  padding:8px;
+
+}
+
+.espacio-qr img {
+
+  width:100%;
+
+  height:100%;
+
+  object-fit:contain;
+
+  border-radius:6px;
+
+}
+
+.texto-numero, .texto-instruccion {
+
+  text-align:center;
+
+  margin-bottom:10px;
+
+}
+
+.boton-entendido {
+
+  background:#FFCC00;
+
+  color:#000000;
+
+  border:none;
+
+  padding:12px 24px;
+
+  border-radius:8px;
+
+  font-size:16px;
+
+  font-weight:bold;
+
+  width:100%;
+
+  cursor:pointer;
+
+  margin-top:10px;
+
+}
+
+.carrusel-3d { width:100%; height:220px; perspective:1500px; margin-top:20px; position:relative; z-index:1; }
+
+.escena { width:100%; height:100%; position:relative; transform-style:preserve-3d; transition:transform 0.5s cubic-bezier(0.2,0.7,0.2,1); touch-action:pan-y; }
+
+.tarjeta { position:absolute; width:65%; height:90%; left:17.5%; top:5%; border-radius:10px; overflow:hidden; background:#000; box-shadow:0 0 18px rgba(255,204,0,0.3); backface-visibility:hidden; border:3px solid #ffcc00; transition:all 0.4s ease; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+
+.tarjeta img { width:100%; height:80%; object-fit:cover; }
+
+.tarjeta .etiqueta { font-size:20px; font-weight:bold; color:#ffcc00; text-shadow:0 0 8px #ffcc00; padding-bottom:8px; }
+
+.ventana-contenido { display:none; position:fixed; inset:0; z-index:999; padding:15px; overflow-y:auto; background:rgba(0,0,0,0.92); }
+
+#ventana_musica { background-image:url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15 25v25c0 2.76-2.24 5-5 5S5 52.76 5 50V20h35v30c0 2.76-2.24 5-5 5s-5-2.24-5-5V25H15zm40 5v25c0 2.76-2.24 5-5 5s-5-2.24-5-5V30h15z' fill='%2300aa44' fill-opacity='0.12'/%3E%3C/svg%3E"); background-repeat:repeat; }
+
+#ventana_peliculas { background-image:url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10h80v80H10V10zm5 5v70h70V15H15zm10 10h10v10H25V25zm10 0h10v10H35V25zm10 0h10v10H45V25zm10 0h10v10H55V25zm10 0h10v10H65V25zM25 45h10v10H25V45zm10 0h10v10H35V45zm10 0h10v10H45V45zm10 0h10v10H55V45zm10 0h10v10H65V45zM25 65h10v10H25V65zm10 0h10v10H35V65zm10 0h10v10H45V65zm10 0h10v10H55V65zm10 0h10v10H65V65z' fill='%23ffcc00' fill-opacity='0.1'/%3E%3C/svg%3E"); background-repeat:repeat; }
+
+#ventana_noticias { background-image:url("data:image/svg+xml,%3Csvg width='50' height='50' viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='10' cy='10' r='1.2' fill='%23ffffff' fill-opacity='0.1'/%3E%3Ccircle cx='25' cy='35' r='1' fill='%23ffffff' fill-opacity='0.08'/%3E%3Ccircle cx='40' cy='15' r='1.5' fill='%23ffffff' fill-opacity='0.09'/%3E%3C/svg%3E"); background-repeat:repeat; }
+
+#ventana_deportes { background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='6' fill='%2300aaff' fill-opacity='0.08'/%3E%3Cpath d='M26 30h8M30 26v8' stroke='%2300aaff' stroke-opacity='0.1' stroke-width='0.8'/%3E%3C/svg%3E"); background-repeat:repeat; }
+
+.encabezado-ventana { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; position:relative; z-index:2; }
+
+.cerrar { font-size:18px; color:#ff3333; font-weight:bold; cursor:pointer; text-shadow:0 0 6px #ff3333; }
+
+.titulo-ventana { font-size:24px; color:#ffcc00; font-weight:bold; text-shadow:0 0 6px #ffcc00; }
+
+.cuadricula-artistas { display:grid; grid-template-columns:repeat(2, 1fr); gap:15px; margin-top:15px; position:relative; z-index:2; }
+
+.tarjeta-artista { background:#111; border:2px solid #ffcc00; border-radius:10px; padding:10px; text-align:center; cursor:pointer; transition:transform 0.2s; }
+
+.tarjeta-artista:hover { transform:scale(1.05); }
+
+.tarjeta-artista img { width:100%; height:130px; object-fit:cover; border-radius:8px; margin-bottom:8px; }
+
+.nombre-artista { font-size:16px; font-weight:bold; color:#00ffff; text-shadow:0 0 5px #00ffff; }
+
+.lista-canciones { margin-top:15px; text-align:left; position:relative; z-index:2; }
+
+.volver { color:#ffcc00; font-weight:bold; cursor:pointer; margin-bottom:12px; display:inline-block; padding:5px; font-size:17px; }
+
+.cancion { display:flex; align-items:center; gap:10px; padding:10px 8px; border-bottom:1px solid rgba(50,50,50,0.7); color:#fff; font-size:16px; background:rgba(0,0,0,0.5); border-radius:6px; margin-bottom:4px; }
+
+.nombre-cancion { width:45%; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.barras-sonido { display:flex; align-items:flex-end; gap:2px; height:22px; width:25px; flex-shrink:0; }
+
+.barra { width:3px; background:#00ffff; border-radius:2px; animation: igual 0.6s infinite alternate; }
+
+.barra:nth-child(1) { animation-name: barra1; }
+
+.barra:nth-child(2) { animation-name: barra2; animation-delay:0.1s; }
+
+.barra:nth-child(3) { animation-name: barra3; animation-delay:0.2s; }
+
+.barra:nth-child(4) { animation-name: barra4; animation-delay:0.15s; }
+
+.barra:nth-child(5) { animation-name: barra5; animation-delay:0.05s; }
+
+@keyframes barra1 { 0%{height:4px;} 100%{height:20px;} }
+
+@keyframes barra2 { 0%{height:6px;} 100%{height:16px;} }
+
+@keyframes barra3 { 0%{height:3px;} 100%{height:22px;} }
+
+@keyframes barra4 { 0%{height:8px;} 100%{height:14px;} }
+
+@keyframes barra5 { 0%{height:4px;} 100%{height:18px;} }
+
+.barras-sonido.pausado .barra { animation:none; height:4px; }
+
+.btn-play { width:38px; height:38px; border-radius:50%; border:none; cursor:pointer; font-size:17px; font-weight:bold; transition:all 0.2s; flex-shrink:0; }
+
+.btn-play.reproduciendo { background:#ff3333; color:#fff; }
+
+.btn-play.pausado { background:#00cc44; color:#fff; }
+
+.barra-progreso { flex:1; height:5px; background:#222; border-radius:3px; cursor:pointer; }
+
+.avance { height:100%; width:0%; background:#ffcc00; border-radius:3px; transition:width 0.1s; }
+
+.cuadricula-peliculas { display:grid; grid-template-columns:repeat(2, 1fr); gap:15px; margin-top:15px; }
+
+.tarjeta-pelicula { background:#111; border:2px solid #ffcc00; border-radius:10px; padding:10px; text-align:center; cursor:pointer; transition:transform 0.2s; }
+
+.tarjeta-pelicula:hover { transform:scale(1.05); }
+
+.tarjeta-pelicula img { width:100%; height:150px; object-fit:cover; border-radius:8px; margin-bottom:8px; }
+
+.nombre-pelicula { font-size:15px; font-weight:bold; color:#ffcc00; text-shadow:0 0 5px #ffcc00; }
+
+.ventana-pelicula-grande { display:none; position:fixed; inset:0; background:#000; z-index:10000; padding:8px; }
+
+.contenido-pelicula { width:100%; height:100%; display:flex; flex-direction:column; align-items:flex-start; }
+
+.barra-superior { display:flex; width:100%; padding:5px 0; }
+
+.video-pantalla-completa { width:100%; aspect-ratio:16/9; max-height:calc(100vh - 50px); border:3px solid #ffcc00; border-radius:8px; background:#000; }
+
+.video-pantalla-completa::-webkit-media-controls-panel { background:rgba(0,0,0,0.85); }
+
+.video-pantalla-completa::-webkit-media-controls-current-time-display,
+
+.video-pantalla-completa::-webkit-media-controls-time-remaining-display { color:#ffcc00; font-weight:bold; }
+
+.lista-contenido { text-align:left; color:#fff; font-size:16px; line-height:1.7; padding:0 10px; }
+
+.lista-contenido a { color:#00ffff; text-decoration:none; display:block; padding:6px 0; border-bottom:1px solid #222; }
+
+.lista-contenido a:hover { color:#ffcc00; padding-left:8px; }
+
+.ventana-vivo { display:none; position:fixed; inset:0; background:#000; z-index:9998; padding:8px; }
+
+.contenido-vivo { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+
+.reproductor { width:100%; aspect-ratio:16/9; max-height:calc(100vh - 50px); border:3px solid #ffcc00; border-radius:8px; background:#000; }
+
+.intergram-chat-button { width:65px !important; height:65px !important; border-radius:50% !important; background:linear-gradient(135deg,#0077ff,#00ffff) !important; box-shadow:0 0 20px rgba(0,255,255,0.8) !important; position:relative !important; }
+
+.intergram-chat-button::after { content:""; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:55%; height:55%; background-image:url("https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/512px-WhatsApp.svg.png"); background-size:contain; background-repeat:no-repeat; background-position:center; }
+
+.intergram-chat-button > * { display:none !important; }
+
+.intergram-chat-window { background-color:#E5DDD5 !important; }
+
+.intergram-chat-header { background:linear-gradient(90deg,#0055aa,#00aaff) !important; color:white !important; font-weight:bold !important; }
+
+.intergram-chat-message-user { background-color:#DCF8C6 !important; color:#111 !important; border-radius:12px 12px 4px 12px !important; }
+
+.intergram-chat-message-bot { background-color:white !important; color:#111 !important; border-radius:12px 12px 12px 4px !important; }
+
+.intergram-chat-input { background-color:#F0EBE4 !important; border-radius:20px !important; }
+
+.intergram-chat-send-button { background:linear-gradient(90deg,#0077ff,#00ffff) !important; color:white !important; border-radius:50% !important; }
+
+#avisoBienvenida { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:99999; align-items:center; justify-content:center; padding:20px; }
+
+#cajaAviso { background:linear-gradient(180deg,#000d1a,#001a33); border:3px solid #00ffff; border-radius:15px; padding:25px; max-width:380px; width:100%; text-align:center; box-shadow:0 0 30px rgba(0,255,255,0.8); text-shadow:0 0 6px rgba(0,255,255,0.5); }
+
+.recuadro-escaneo { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:70%; height:45%; border:3px solid #ff0000; border-radius:8px; box-shadow:0 0 15px rgba(255,0,0,0.6); animation: parpadeo 1s infinite alternate; }
+
+.linea-escaneo { position:absolute; top:0; left:0; width:100%; height:3px; background:#ff0000; box-shadow:0 0 10px rgba(255,0,0,0.8); animation: barrido 2s infinite linear; }
+
+.texto-escaneo { position:absolute; bottom:-35px; left:0; width:100%; text-align:center; color:#ffcc00; font-size:17px; font-weight:bold; text-shadow:0 0 8px #ffcc00; }
+
+@keyframes parpadeo { from { opacity:0.7; } to { opacity:1; } }
+
+@keyframes barrido { 0% { top:0; } 100% { top:100%; } }
+
+
+</style>
+
+
+<script src="https://unpkg.com/@zxing/library@latest"></script>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+
+
+</head>
+
+<body>
+
+<script>
+
+window.intergramId = "8750977772";
+
+window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"CIBER CESARÍN - EN LÍNEA", introMessage:"¡Hola! Escribe tu duda y te respondo al instante", autoResponse:"✅ Recibido, te contesto muy pronto", mainColor:"#00aaff", position:"left", alwaysUseFloatingButton:true};
+
+</script>
+
+<script id="intergram" type="text/javascript" src="https://www.intergram.xyz/js/widget.js"></script>
+
+<video id="videoFondo" autoplay muted loop playsinline><source src="fondo.mp4" type="video/mp4"></video>
+
+<div class="contenedor">
+
+  <img src="logo_ciber_cesarin.png" alt="CIBER CESARÍN - TU INTERNET DE CONFIANZA" class="logo-principal">
+
+  <div style="text-align:center; margin:25px 0;">
+
+    <button id="btnEscanear" style="background:#1A73E8; color:white; border:none; padding:16px 35px; font-size:20px; font-weight:bold; border-radius:14px; cursor:pointer; display:inline-flex; align-items:center; gap:12px;">
+
+      <span style="font-size:26px;">📷</span> ESCANEAR QR
+
+    </button>
+
+  </div>
+
+  <div style="text-align:center; font-size:14px; color:#ccc; margin-bottom:10px;">O escribe tu código:</div>
+
+  <form action="#" method="post" onsubmit="event.preventDefault();">
+
+    <input type="hidden" name="username" value="cliente">
+
+    <div class="zona-clave" style="transform:scale(0.9);">
+
+      <div class="dedo-indicador">👍</div>
+
+      <input type="password" name="password" id="codigo">
+
+      <span class="boton-ver" id="botonOjo">👁️</span>
+
+    </div>
+
+    <button type="button" id="botonConectar" class="boton-principal">CONECTAR</button>
+
+  </form>
+
+    <button type="button" id="botonYape" class="boton-yape">
+
+    <img src="yape.png" alt="Yape" class="logo-boton-yape">
+
+</button>
+
+  <button class="boton-vivo" id="btnVivo">📺 VER TRANSMISIÓN EN VIVO</button>
+
+  <div class="carrusel-3d">
+
+    <div class="escena" id="escena">
+
+      <!--
+<div class="tarjeta" data-ventana="musica" onclick="reproducirAudioRuta('musica.mp3');"><img src="portada_musica.jpg" alt="Música"><div class="etiqueta">🎵 MÚSICA</div></div>
+-->
+
+      <div class="tarjeta" data-ventana="peliculas" onclick="reproducirAudioRuta('peliculas.mp3');"><img src="portada_peliculas.jpg" alt="Películas"><div class="etiqueta">🎬 PELÍCULAS</div></div>
+
+   <div class="tarjeta" onclick="abrirNoticias(); reproducirAudioRuta('noticias.mp3');">
+<img src="portada_noticias.jpg" alt="Noticias"><div class="etiqueta">📰 NOTICIAS</div></div>
+
+      <div class="tarjeta" data-ventana="deportes" onclick="reproducirAudioRuta('deportes.mp3');"><img src="portada_deportes.jpg" alt="Deportes"><div class="etiqueta">⚽ DEPORTES</div></div>
+      
+  <div class="tarjeta" data-ventana="premios" onclick="reproducirAudioRuta('premios.mp3'); abrirPremios();">
+  <img src="portada_regalo.jpg" alt="Premios">
+  <div class="etiqueta">🎁 PREMIOS</div>
+</div>
+</div>
+
+    </div>
+
+  </div>
+
+  <div style="width:90%; margin:15px auto 0 auto; background:#ffcc00; color:#000; font-weight:bold; padding:12px; border-radius:8px; font-size:17px; text-align:center; box-shadow:0 0 10px rgba(255,204,0,0.5);">
+
+📢 AVISO: PRÓXIMAMENTE NUEVO CONTENIDO Y TRANSMISIONES EN VIVO
+
+  </div>
+
+</div>
+
+<div id="ventanaYape">
+
+  <div class="caja-yape">
+
+    <div class="titulo-yape">💳 🚨 AVISO IMPORTANTE</div>
+
+    <div class="aviso-tiempo">⚠️ Al tocar ACEPTO, obtienes 10 minutos de internet para poder realizar tu pago por Yape Si no completas el pago en ese tiempo, tu acceso a nuestro internet quedará bloqueado hasta el día de mañana.</div>
+
+    <div class="espacio-qr">
+
+      <!-- Aquí luego pones tu imagen real: ej: yape_qr.png -->
+
+      <img src="qr_yape.png" alt="QR para Yape">
+
+    </div>
+
+    <div class="texto-numero">YAPEA!! al número: 989638496</div>
+
+    <div class="texto-instruccion">Paga el monto que necesites y avísanos, o espera a que se confirme tu ticket.
+❌ Si no vas a pagar todavía, usa el botón VOLVER para regresar sin aceptar nada y sigue disfrutando de nuestros servicios.</div>
+
+    <button id="botonAceptarYape" class="boton-entendido" disabled>Espere... (40s)</button>
+  </div>
+
+</div>
+
+<div class="ventana-contenido" id="ventana_musica">
+
+  <div class="encabezado-ventana"><span class="cerrar" onclick="cerrarVentana()">✕ CERRAR</span><span class="titulo-ventana">🎵 MÚSICA - POR ARTISTA</span></div>
+
+  <div class="cuadricula-artistas" id="lista_artistas">
+
+    <div class="tarjeta-artista" onclick="mostrarCanciones('anuel', 'anuel.jpg')"><img src="anuel.jpg" alt="Anuel AA"><div class="nombre-artista">ANUEL AA</div></div>
+
+    <div class="tarjeta-artista" onclick="mostrarCanciones('artistaA', 'artista_a.jpg')"><img src="artista_a.jpg" alt="Artista A"><div class="nombre-artista">ARTISTA A</div></div>
+
+  </div>
+
+  <div class="lista-canciones" id="lista_anuel" style="display:none;">
+
+    <div class="volver" onclick="cerrarCanciones()">⬅ VOLVER A ARTISTAS</div>
+
+    <div class="cancion">
+
+      <span class="nombre-cancion">SECRETO - ANUEL AA</span>
+
+      <div class="barras-sonido pausado"><div class="barra"></div><div class="barra"></div><div class="barra"></div><div class="barra"></div><div class="barra"></div></div>
+
+      <button class="btn-play pausado" onclick="reproducirAudio(this,'musica/secreto_anuel.mp3')">▶</button>
+
+      <div class="barra-progreso" onclick="cambiarTiempo(event, this)"><div class="avance"></div></div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<div class="ventana-contenido" id="ventana_peliculas">
+
+  <div class="encabezado-ventana"><span class="cerrar" onclick="cerrarVentana()">✕ CERRAR</span><span class="titulo-ventana">🎬 PELÍCULAS</span></div>
+
+  <div class="cuadricula-peliculas">
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/kickboxer.mp4')"><img src="imagenes/kickboxer.jpg" alt="Kickboxer"><div class="nombre-pelicula">KICKBOXER</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/shrek.mp4')"><img src="imagenes/shrek.jpg" alt="Shrek"><div class="nombre-pelicula">SHREK</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/rey mono.mp4')"><img src="imagenes/rey mono.jpg" alt="Rey mono"><div class="nombre-pelicula">REY MONO</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/Arthur.mp4')"><img src="imagenes/arthur.jpg" alt="Arthur"><div class="nombre-pelicula">ARTHUR</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/corazon.mp4')"><img src="imagenes/corazon.jpg" alt="Corazon"><div class="nombre-pelicula">CORAZON</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/Mandalorian.mp4')"><img src="imagenes/Mandalorian.jpg" alt="Mandalorian"><div class="nombre-pelicula">MANDALORIAN</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/amos.mp4')"><img src="imagenes/amos.jpg" alt="amos"><div class="nombre-pelicula">AMOS</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/Garfio.mp4')"><img src="imagenes/garfio.jpg" alt="garfio"><div class="nombre-pelicula">GARFIO</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/rapido2.mp4')"><img src="imagenes/rapido2.jpg" alt="Rápido y Furioso 2"><div class="nombre-pelicula">RÁPIDO Y FURIOSO 2</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/rocky1.mp4')"><img src="imagenes/rocky1.jpg" alt="Rocky 1"><div class="nombre-pelicula">ROCKY 1</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/rocky2.mp4')"><img src="imagenes/rocky2.jpg" alt="Rocky 2"><div class="nombre-pelicula">ROCKY 2</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/johnwick1.mp4')"><img src="imagenes/johnwick1.jpg" alt="John Wick 1"><div class="nombre-pelicula">JOHN WICK 1</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/avengers.mp4')"><img src="imagenes/avengers.jpg" alt="Los Vengadores"><div class="nombre-pelicula">LOS VENGADORES</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/spiderman.mp4')"><img src="imagenes/spiderman.jpg" alt="Spiderman"><div class="nombre-pelicula">SPIDERMAN</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/batman.mp4')"><img src="imagenes/batman.jpg" alt="Batman"><div class="nombre-pelicula">BATMAN</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/transformers.mp4')"><img src="imagenes/transformers.jpg" alt="Transformers"><div class="nombre-pelicula">TRANSFORMERS</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/jurassic.mp4')"><img src="imagenes/jurassic.jpg" alt="Jurassic Park"><div class="nombre-pelicula">JURASSIC PARK</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/titanic.mp4')"><img src="imagenes/titanic.jpg" alt="Titanic"><div class="nombre-pelicula">TITANIC</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/gladiador.mp4')"><img src="imagenes/gladiador.jpg" alt="Gladiador"><div class="nombre-pelicula">GLADIADOR</div></div>
+
+    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/300.mp4')"><img src="imagenes/300.jpg" alt="300"><div class="nombre-pelicula">300</div></div>
+
+  </div>
+
+</div>
+
+<!-- VENTANA NOTICIAS CARRUSEL -->
+<div class="ventana-noticias" id="ventanaNoticias">
+  <div class="titulo-noticias" id="tituloNoticias">📰 NOTICIAS</div>
+  <div class="carrusel-n">
+    <div class="contenedor-n" id="cuerpoNoticias"></div>
+  </div>
+  <div class="navegacion-n">
+    <button class="btn-n" onclick="cambiarNoticia(-1)">⬅</button>
+    <div class="indice-n" id="indicadorN">1 / 1</div>
+    <button class="btn-n" onclick="cambiarNoticia(1)">➡</button>
+  </div>
+  <div style="text-align:center; margin:10px 0;">
+  </div>
+</div>
+
+<div class="ventana-contenido" id="ventana_deportes">
+  <div class="encabezado-ventana">
+    <span class="cerrar" onclick="cerrarVentana()">✕ CERRAR</span>
+    <span class="titulo-ventana">⚽ DEPORTES</span>
+  </div>
+
+  <div style="max-width: 600px; margin: 0 auto; padding: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <button id="btnAnteriorDeportes" onclick="cambiarEnlaceDeporte(-1)" style="
+        background: linear-gradient(90deg, #0066cc, #0099ff);
+        color: white; border: none; padding: 10px 16px;
+        border-radius: 8px; font-weight: bold; cursor: pointer;
+      ">⬅ ANTERIOR</button>
+
+      <span id="indicadorEnlaceDeportes" style="
+        font-size: 18px; font-weight: bold; color: #ffcc00;
+        text-shadow: 0 0 6px #ffcc00;
+      ">1 de 1</span>
+
+      <button id="btnSiguienteDeportes" onclick="cambiarEnlaceDeporte(1)" style="
+        background: linear-gradient(90deg, #009933, #00cc44);
+        color: white; border: none; padding: 10px 16px;
+        border-radius: 8px; font-weight: bold; cursor: pointer;
+      ">SIGUIENTE ➡</button>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.6); border: 2px solid #ffcc00; border-radius: 10px; padding: 12px; margin-bottom: 10px;">
+      <h4 id="nombreEnlaceDeporte" style="color: #ffcc00; margin: 0 0 6px 0; font-size: 17px;">Enlace Principal</h4>
+      <p id="estadoEnlaceDeporte" style="margin: 0; font-size: 14px; color: #999;">⏳ Conectando...</p>
+    </div>
+
+    <div id="contenedorReproductorDeporte" style="
+      width: 100%; aspect-ratio: 16/9; background: #000;
+      border-radius: 8px; border: 2px solid #ffcc00; overflow: hidden;
+    ">
+      <p style="color: #666; text-align: center; padding-top: 80px;">Cargando...</p>
+    </div>
+  </div>
+</div>
+
+<!-- VENTANA PREMIOS - RULETA -->
+<div class="ventana-contenido" id="ventana_premios">
+  <div class="encabezado-ventana">
+    <span class="cerrar" onclick="cerrarVentana()">✕ CERRAR</span>
+    <span class="titulo-ventana">🎁 RULETA DE PREMIOS</span>
+  </div>
+  <iframe 
+    src="ruleta.html" 
+    style="width: 100%; height: 85vh; border: none; border-radius: 8px;"
+  ></iframe>
+</div>
+
+<script>
+let datosDeportes = null;
+let listaEnlaces = [];
+let indiceActual = 0;
+let hlsDeporteActual = null;
+let cargandoDeportes = false;
+
+async function cargarTransmisionesDeportes() {
+  if (cargandoDeportes) return;
+  cargandoDeportes = true;
+
+  const version = Date.now();
+  const urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/30e5fe61ca4abd535768150a6b30af3d/raw/canales.json?v=" + version;    
+
+  try {
+    const respuesta = await fetch(urlGist);
+    const todo = await respuesta.json();
+    datosDeportes = todo.deportes;
+
+    if (datosDeportes.transmisiones && Array.isArray(datosDeportes.transmisiones)) {
+      listaEnlaces = datosDeportes.transmisiones.filter(t => t.activo !== false);
+    } else {
+      listaEnlaces = Object.values(datosDeportes).filter(t => t && t.activo !== false);
+    }
+
+    if (listaEnlaces.length > 5) listaEnlaces = listaEnlaces.slice(0, 5);
+
+    indiceActual = 0;
+    mostrarEnlaceDeporte(0);
+
+  } catch (err) {
+    console.log("Error cargando deportes:", err);
+    document.getElementById('estadoEnlaceDeporte').textContent = "❌ No se pudo cargar";
+    document.getElementById('estadoEnlaceDeporte').style.color = "#ff6666";
+  } finally {
+    cargandoDeportes = false;
+  }
+}
+
+function mostrarEnlaceDeporte(indice) {
+  if (listaEnlaces.length === 0) {
+    document.getElementById('nombreEnlaceDeporte').textContent = "Sin transmisiones";
+    document.getElementById('indicadorEnlaceDeportes').textContent = "0 de 0";
+    document.getElementById('estadoEnlaceDeporte').textContent = "❌ No hay enlaces activos";
+    document.getElementById('estadoEnlaceDeporte').style.color = "#ff6666";
+    document.getElementById('contenedorReproductorDeporte').innerHTML =
+      '<p style="color: #ff6666; text-align: center; padding-top: 80px;">Sin enlaces disponibles</p>';
+    return;
+  }
+
+  const enlace = listaEnlaces[indice];
+  document.getElementById('indicadorEnlaceDeportes').textContent = `${indice + 1} de ${listaEnlaces.length}`;
+  document.getElementById('nombreEnlaceDeporte').textContent = enlace.nombre || "Sin nombre";
+
+  if (!enlace.enlace || enlace.enlace.trim() === "") {
+    document.getElementById('estadoEnlaceDeporte').textContent = "❌ Enlace caído / Sin enlace";
+    document.getElementById('estadoEnlaceDeporte').style.color = "#ff6666";
+    document.getElementById('contenedorReproductorDeporte').innerHTML =
+      '<p style="color: #ff6666; text-align: center; padding-top: 80px;">Enlace vacío o eliminado</p>';
+    return;
+  }
+
+  document.getElementById('estadoEnlaceDeporte').textContent = "⏳ Conectando...";
+  document.getElementById('estadoEnlaceDeporte').style.color = "#ffcc00";
+
+  const contenedor = document.getElementById('contenedorReproductorDeporte');
+
+  if (hlsDeporteActual) {
+    hlsDeporteActual.destroy();
+    hlsDeporteActual = null;
+  }
+
+  if (enlace.tipo === 'iframe') {
+    contenedor.innerHTML = `
+      <iframe 
+        src="${enlace.enlace}" 
+        style="width: 100%; height: 100%; border: none;" 
+        scrolling="no" 
+        frameborder="0" 
+        allowfullscreen
+        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+      </iframe>
+    `;
+    document.getElementById('estadoEnlaceDeporte').textContent = "✅ Activo";
+    document.getElementById('estadoEnlaceDeporte').style.color = "#66ff66";
+
+  } else if (enlace.tipo === 'hls' || enlace.tipo === 'm3u8') {
+    contenedor.innerHTML = `<video id="videoDeporteActual" controls autoplay playsinline style="width: 100%; height: 100%;"></video>`;
+    const video = document.getElementById('videoDeporteActual');
+
+    if (Hls.isSupported()) {
+      hlsDeporteActual = new Hls({ maxBufferLength: 4, debug: false });
+      hlsDeporteActual.on(Hls.Events.MANIFEST_PARSED, () => {
+        document.getElementById('estadoEnlaceDeporte').textContent = "✅ En vivo";
+        document.getElementById('estadoEnlaceDeporte').style.color = "#66ff66";
+      });
+      hlsDeporteActual.on(Hls.Events.ERROR, (ev, dat) => {
+        if (dat.fatal) {
+          document.getElementById('estadoEnlaceDeporte').textContent = "❌ Enlace caído";
+          document.getElementById('estadoEnlaceDeporte').style.color = "#ff6666";
+          if (typeof db !== 'undefined') {
+            db.ref("enlaces_caidos/" + (enlace.id || Date.now())).set({
+              canal: enlace.nombre || "Transmisión deportiva",
+              fecha_hora: new Date().toLocaleString("es-PE", { timeZone: "America/Lima" }),
+              visto: false
+            });
+          }
+        }
+      });
+      hlsDeporteActual.loadSource(enlace.enlace);
+      hlsDeporteActual.attachMedia(video);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = enlace.enlace;
+      document.getElementById('estadoEnlaceDeporte').textContent = "✅ En vivo";
+      document.getElementById('estadoEnlaceDeporte').style.color = "#66ff66";
+    }
+
+  } else if (enlace.tipo === 'mp4') {
+    contenedor.innerHTML = `<video src="${enlace.enlace}" controls autoplay playsinline style="width: 100%; height: 100%;"></video>`;
+    document.getElementById('estadoEnlaceDeporte').textContent = "✅ Video guardado";
+    document.getElementById('estadoEnlaceDeporte').style.color = "#66ccff";
+
+  } else {
+    contenedor.innerHTML = '<p style="color: #ff6666; text-align: center; padding-top: 80px;">Tipo no soportado</p>';
+    document.getElementById('estadoEnlaceDeporte').textContent = "⚠️ Tipo desconocido";
+    document.getElementById('estadoEnlaceDeporte').style.color = "#ffcc00";
+  }
+}
+
+function cambiarEnlaceDeporte(paso) {
+  // ✅ DETENER AUDIO/VIDEO ANTES DE CAMBIAR
+  const contenedor = document.getElementById('contenedorReproductorDeporte');
+  if (contenedor) {
+    // Detener iframe
+    const iframe = contenedor.querySelector('iframe');
+    if (iframe) {
+      const srcAnterior = iframe.src;
+      iframe.src = '';
+      iframe.src = srcAnterior;
+    }
+    // Detener video MP4
+    const video = contenedor.querySelector('video');
+    if (video) {
+      video.pause();
+      video.currentTime = 0;
+    }
+  }
+
+  if (listaEnlaces.length === 0) return;
+  indiceActual = (indiceActual + paso + listaEnlaces.length) % listaEnlaces.length;
+  mostrarEnlaceDeporte(indiceActual);
+}
+
+function detenerDeportes() {
+  if (hlsDeporteActual) {
+    hlsDeporteActual.destroy();
+    hlsDeporteActual = null;
+  }
+}
+
+const tarjetaDeportes = document.querySelector('.tarjeta[data-ventana="deportes"]');
+if (tarjetaDeportes) {
+  tarjetaDeportes.addEventListener('click', () => {
+    setTimeout(() => {
+      indiceActual = 0;
+      cargarTransmisionesDeportes();
+    }, 100);
+  });
+}
+</script>
+
+</div>
+
+<div class="ventana-pelicula-grande" id="ventanaPelicula">
+
+  <div class="contenido-pelicula"><div class="barra-superior"><span class="cerrar" onclick="cerrarPelicula()">⬅ VOLVER A PELÍCULAS</span></div>
+
+  <video class="video-pantalla-completa" id="videoPelicula" controls controlslist="nodownload" oncontextmenu="return false" playsinline preload="metadata"></video></div>
+
+</div>
+
+<div class="ventana-vivo" id="ventanaVivo">
+  <div class="contenido-vivo" style="padding:15px; overflow-y:auto; height:100%;">
+    <div class="barra-superior" style="margin-bottom:15px;">
+      <span class="cerrar" onclick="cerrarVivo()">✕ CERRAR</span>
+    </div>
+
+    <!-- 🇵🇪 AMÉRICA TV -->
+    <div style="max-width:480px; margin:0 auto 25px auto; padding:12px; background:rgba(0,0,0,0.5); border-radius:12px; border:2px solid #ffcc00;">
+      <h4 style="color:#fff; text-align:center; margin:0 0 12px 0; font-size:18px;">🇵🇪 América TV — En Vivo</h4>
+      <video id="vivoAmerica" controls playsinline preload="metadata" style="width:100%; aspect-ratio:16/9; border-radius:8px; background:#000;"></video>
+      <p id="estadoAmerica" style="color:#999; font-size:13px; text-align:center; margin:8px 0 0 0;">⏳ Cargando...</p>
+    </div>
+
+    <!-- 🇵🇪 LATINA TV -->
+    <div style="max-width:480px; margin:0 auto; padding:12px; background:rgba(0,0,0,0.5); border-radius:12px; border:2px solid #ffcc00;">
+      <h4 style="color:#fff; text-align:center; margin:0 0 12px 0; font-size:18px;">🇵🇪 Latina TV — En Vivo</h4>
+      <video id="vivoLatina" controls playsinline preload="metadata" style="width:100%; aspect-ratio:16/9; border-radius:8px; background:#000;"></video>
+      <p id="estadoLatina" style="color:#999; font-size:13px; text-align:center; margin:8px 0 0 0;">⏳ Cargando...</p>
+    </div>
+  </div>
+</div>
+
+<div id="avisoBienvenida">
+
+  <div id="cajaAviso">
+
+    <div style="font-size:45px; margin-bottom:15px;">✅</div>
+
+    <h2 style="color:#00ffff; font-size:22px; font-weight:bold; margin-bottom:15px; text-shadow:0 0 6px #00ffff;">¡BIENVENIDO!</h2>
+
+    <p style="color:#ffffff; font-size:16px; line-height:1.6; margin-bottom:15px;">
+
+      Gracias por usar el servicio de<br>
+
+      <strong style="color:#ffcc00; font-size:20px;">CIBER CESARÍN</strong><br>
+
+      ¡Tu internet de confianza!
+
+    </p>
+
+
+
+    <!-- ✅ AQUÍ APARECERÁ EL TIEMPO -->
+
+    <p id="textoTiempo" style="color:#ffcc00; font-size:20px; font-weight:bold; margin:10px 0;"></p>
+
+
+
+    <p style="color:#aaffff; font-size:18px; font-weight:bold; margin-bottom:20px;">Ya estás conectado, disfruta tu conexión ⚡</p>
+
+    <button onclick="cerrarAviso()" style="background:linear-gradient(90deg,#0077ff,#00ffff); color:#000; font-weight:bold; border:none; padding:12px 30px; border-radius:8px; font-size:18px; cursor:pointer;">ACEPTAR Y CONTINUAR</button>
+
+  </div>
+
+</div>
+
+
+
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBVpQ4dkUAb8dbILzhghOKN5RK22yIrB-g",
+  authDomain: "ciber-cesarin.firebaseapp.com",
+  databaseURL: "https://ciber-cesarin-default-rtdb.firebaseio.com/",
+  projectId: "ciber-cesarin",
+  storageBucket: "ciber-cesarin.firebasestorage.app",
+  messagingSenderId: "547043055918",
+  appId: "1:547043055918:android:9d6bc3c449f90c326282bf"
+};
+if (firebase.apps.length === 0) {
+  firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.database();
+
+
+
+
+function reproducirAudioRuta(rutaArchivo){
+
+  const audio = new Audio(rutaArchivo);
+
+  audio.volume = 1;
+
+  audio.play().catch(err => console.log("Error audio:", err));
+
+}
+
+
+
+// ✅ FUNCIÓN CORREGIDA 100% IGUAL A TUS CAMPOS DE FIREBASE
+
+async function verificarCodigo(){
+
+  const cod = document.getElementById('codigo').value.trim();
+
+  if(!cod){
+
+    reproducirAudioRuta("aviso_ingrese_clave.mp3");
+
+    return;
+
+  }
+
+
+
+  const ref = db.ref('historial/' + cod);
+
+  const snap = await ref.once('value');
+
+
+
+  if(!snap.exists()){
+
+    reproducirAudioRuta("aviso_clave_incorrecta.mp3");
+
+    document.getElementById('codigo').value = "";
+
+    return;
+
+  }
+
+
+
+  const datos = snap.val();
+
+
+
+  // Si ya fue usado por el portal, rechaza
+
+  if(datos.leido_por_portal === true){
+
+    reproducirAudioRuta("aviso_clave_incorrecta.mp3");
+
+    document.getElementById('codigo').value = "";
+
+    alert("❌ Este código ya fue utilizado");
+
+    return;
+
+  }
+
+
+
+  // Marca que el portal ya lo leyó
+
+  await ref.update({ leido_por_portal: true });
+
+
+
+// ✅ AGREGA ESTO AQUÍ, NO LO TENÍAS:
+
+const minutos = parseInt(datos.tiempo_minutos) || 0;
+
+console.log("📥 VALOR LEÍDO:", minutos, " | DATOS:", datos);
+
+
+
+if(minutos <= 0){
+
+  alert("⚠️ No se leyó el tiempo: " + minutos);
+
+  return;
+
+}
+
+
+
+// ✅ BIENVENIDA
+
+reproducirAudioRuta("audios_tiempo/bienvenida.mp3");
+
+
+
+// ✅ TIEMPO
+
+if(minutos < 60){
+
+  rutaAudioTiempo = "audios_tiempo/min_" + minutos + ".mp3";
+
+  textoMostrar = minutos + " minutos";
+
+}
+
+else if(minutos < 1440){
+
+  const horas = Math.floor(minutos / 60);
+
+  const mins = minutos % 60;
+
+  if(mins === 0){
+
+    rutaAudioTiempo = "audios_tiempo/hora_" + horas.toString().padStart(2,'0') + ".mp3";
+
+    textoMostrar = horas + " hora" + (horas>1?'s':'');
+
+  }else{
+
+    rutaAudioTiempo = "audios_tiempo/hora_" + horas.toString().padStart(2,'0') + "_min_" + mins + ".mp3";
+
+    textoMostrar = horas + " hora" + (horas>1?'s':'') + " y " + mins + " minuto" + (mins>1?'s':'');
+
+  }
+
+}
+
+else{
+
+  const dias = Math.floor(minutos / 1440);
+
+  rutaAudioTiempo = "audios_tiempo/dia_" + dias.toString().padStart(2,'0') + ".mp3";
+
+  textoMostrar = dias + " día" + (dias>1?'s':'');
+
+}
+
+
+
+// ✅ ORDEN DE REPRODUCCIÓN
+
+setTimeout(() => reproducirAudioRuta(rutaAudioTiempo), 3000);
+
+setTimeout(() => reproducirAudioRuta("audios_tiempo/final.mp3"), 6000);
+
+
+
+// ✅ MUESTRA EL TEXTO COMPLETO
+
+document.getElementById('textoTiempo').innerHTML = 'Ya estás conectado, tienes <strong style="color:#ffcc00">' + textoMostrar + '</strong> de internet ⚡';
+
+
+
+// ✅ MUESTRA EL AVISO VISUAL
+
+setTimeout(()=>{
+
+  document.getElementById('avisoBienvenida').style.display = 'flex';
+
+}, 500);
+
+}
+
+
+
+document.getElementById('botonConectar').addEventListener('click', verificarCodigo);
+
+
+
+const btnEscanear=document.getElementById('btnEscanear');
+
+let ventanaCamara=document.createElement('div');
+ventanaCamara.id = "ventanaCamara";
+ventanaCamara.style.cssText='display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999;';
+
+ventanaCamara.innerHTML=`
+
+<div style="position:relative;width:90%;max-width:400px;margin:50px auto;">
+
+  <button id="cerrarCamara" style="position:absolute;top:-40px;right:0;background:none;border:none;color:#ff3333;font-size:35px;cursor:pointer;">✕</button>
+
+  <video id="camara" autoplay playsinline style="width:100%;border-radius:10px;"></video>
+
+  <div class="recuadro-escaneo"><div class="linea-escaneo"></div><div class="texto-escaneo">📷 ACERQUE EL CÓDIGO AL RECUADRO ROJO</div></div>
+
+</div>`;
+
+document.body.appendChild(ventanaCamara);
+
+const cerrarCamara=document.getElementById('cerrarCamara'),videoCamara=document.getElementById('camara');
+
+let lector=null,transmision=null;
+
+
+
+btnEscanear.addEventListener('click',async()=>{
+
+  try{
+
+    transmision=await navigator.mediaDevices.getUserMedia({
+
+      video:{ facingMode:'environment', width:{ideal:1920}, height:{ideal:1080}, focusMode:'continuous' }, audio:false
+
+    });
+
+    videoCamara.srcObject=transmision;
+
+    ventanaCamara.style.display='block';
+
+    await videoCamara.play();
+
+    lector=new ZXing.BrowserMultiFormatReader();
+
+    lector.decodeFromVideoDevice(null,'camara',(res,err)=>{
+
+  if(res){
+
+    lector.reset();
+
+    if(transmision) transmision.getTracks().forEach(t=>t.stop());
+
+    ventanaCamara.style.display='none';
+
+
+
+    // ✅ TODO CORREGIDO
+
+    const textoCompleto = res.text.trim();
+
+    const soloNumeros = textoCompleto.replace(/\D/g, '');
+
+    const codigoLimpio = soloNumeros.substring(0, 6);
+
+
+
+    document.getElementById('codigo').value = codigoLimpio;
+
+    verificarCodigo();
+
+  }
+
+},{ shouldPauseWhenDetected:false, tryHarder:true });
+
+  }catch(e){
+
+    reproducirAudioRuta("aviso_clave_incorrecta.mp3");
+
+    ventanaCamara.style.display='none';
+
+    if(transmision) transmision.getTracks().forEach(t=>t.stop());
+
+  }
+
+});
+
+cerrarCamara.addEventListener('click',()=>{
+
+  if(lector) lector.reset();
+
+  if(transmision) transmision.getTracks().forEach(t=>t.stop());
+
+  ventanaCamara.style.display='none';
+
+});
+
+
+
+let audioReproductor = new Audio();
+
+let audioActivoRuta = null;
+
+let botonActivoMusica = null;
+
+let barrasActivasMusica = null;
+
+let tiempoGuardado = {};
+
+const escena=document.getElementById('escena');
+
+const tarjetas=document.querySelectorAll('.tarjeta');
+
+let indice=0,iniX=0,total=tarjetas.length;
+
+
+
+function actualizar(){tarjetas.forEach((d,i)=>{let desp=i-indice;if(desp>Math.floor(total/2))desp-=total;if(desp<-Math.floor(total/2))desp+=total;let ang=desp*45,prof=Math.abs(desp)*-160;d.style.transform=`rotateY(${ang}deg) translateZ(${prof}px)`;d.style.opacity=1-Math.abs(desp)*0.38;});}
+
+escena.addEventListener('touchstart',e=>iniX=e.touches[0].clientX);
+
+escena.addEventListener('touchend',e=>{let finX=e.changedTouches[0].clientX;indice+=(finX>iniX+100)?1:(finX<iniX-100)?-1:0;indice=(indice+total)%total;actualizar();});
+
+actualizar();
+
+tarjetas.forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.ventana-contenido').forEach(v=>v.style.display='none');
+    const ventanaDestino = document.getElementById('ventana_'+t.dataset.ventana);
+    if (ventanaDestino) {
+      ventanaDestino.style.display='block';
+      history.pushState({seccion: t.dataset.ventana}, ''); // ✅ Agrega esta línea
+    }
+  });
+});
+
+
+
+function cerrarVentana(){
+  document.querySelectorAll('.ventana-contenido').forEach(v=>v.style.display='none');
+  if(audioActivoRuta)tiempoGuardado[audioActivoRuta]=audioReproductor.currentTime;
+  audioReproductor.pause();
+
+// ✅ DETIENE EL REPRODUCTOR DE DEPORTES SI ESTÁ EN HLS
+detenerDeportes();
+
+// ✅ DETIENE IFRAMES DE FACEBOOK — CORTA EL AUDIO DE VERDAD
+const contenedorDeportes = document.getElementById('contenedorReproductorDeporte');
+if (contenedorDeportes) {
+  const iframe = contenedorDeportes.querySelector('iframe');
+  if (iframe) {
+    const direccionOriginal = iframe.src;
+    iframe.src = '';          // Lo vacío → corta el audio
+    iframe.src = direccionOriginal;  // Lo recarga en blanco
+  }
+}
+
+  // ✅ DETIENE IFRAMES DE FACEBOOK
+
+
+  // ✅ DETIENE TV EN VIVO SI ESTÁ ABIERTA
+  if (ventanaVivo && ventanaVivo.style.display === 'block') {
+    cerrarVivo();
+  }
+}
+
+function mostrarCanciones(id,img){document.getElementById('lista_artistas').style.display='none';document.querySelectorAll('.lista-canciones').forEach(l=>l.style.display='none');document.getElementById('ventana_musica').style.backgroundImage=`linear-gradient(rgba(0,0,0,0.25),rgba(0,0,0,0.25)),url(${img})`;document.getElementById('ventana_musica').style.backgroundSize='cover';document.getElementById('ventana_musica').style.backgroundPosition='center';document.getElementById('lista_'+id).style.display='block';}
+
+function cerrarCanciones(){document.getElementById('lista_artistas').style.display='grid';document.querySelectorAll('.lista-canciones').forEach(l=>l.style.display='none');document.getElementById('ventana_musica').style.backgroundImage="url(\"data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15 25v25c0 2.76-2.24 5-5 5S5 52.76 5 50V20h35v30c0 2.76-2.24 5-5 5s-5-2.24-5-5V25H15zm40 5v25c0 2.76-2.24 5-5 5s-5-2.24-5-5V30h15z' fill='%2300aa44' fill-opacity='0.12'/%3E%3C/svg%3E\")";document.getElementById('ventana_musica').style.backgroundSize='auto';document.getElementById('ventana_musica').style.backgroundPosition='initial';}
+
+
+
+function detenerTodoAudio(){
+
+  if(audioActivoRuta){
+
+    tiempoGuardado[audioActivoRuta] = audioReproductor.currentTime;
+
+    audioReproductor.pause();
+
+    if(botonActivoMusica){
+
+      botonActivoMusica.textContent='▶';
+
+      botonActivoMusica.classList.replace('reproduciendo','pausado');
+
+    }
+
+    if(barrasActivasMusica) barrasActivasMusica.classList.add('pausado');
+
+  }
+
+  audioActivoRuta = null;
+
+  botonActivoMusica = null;
+
+  barrasActivasMusica = null;
+
+}
+
+
+
+function reproducirAudio(boton,archivo){
+
+  const barras = boton.previousElementSibling;
+
+  const barraProgreso = boton.closest('.cancion').querySelector('.barra-progreso');
+
+  if(audioActivoRuta === archivo){
+
+    if(audioReproductor.paused){
+
+      audioReproductor.play();
+
+      boton.textContent='⏸';
+
+      boton.classList.replace('pausado','reproduciendo');
+
+      barras.classList.remove('pausado');
+
+    }else{
+
+      audioReproductor.pause();
+
+      boton.textContent='▶';
+
+      boton.classList.replace('reproduciendo','pausado');
+
+      barras.classList.add('pausado');
+
+    }
+
+    return;
+
+  }
+
+  detenerTodoAudio();
+
+  audioReproductor.src = archivo;
+
+  if(tiempoGuardado[archivo]) audioReproductor.currentTime = tiempoGuardado[archivo];
+
+  audioReproductor.play().catch(err=>console.log("Error música:",err));
+
+  audioActivoRuta = archivo;
+
+  botonActivoMusica = boton;
+
+  barrasActivasMusica = barras;
+
+  boton.textContent='⏸';
+
+  boton.classList.replace('pausado','reproduciendo');
+
+  barras.classList.remove('pausado');
+
+  audioReproductor.ontimeupdate = ()=>{
+
+    if(audioReproductor.duration){
+
+      let porcentaje = (audioReproductor.currentTime/audioReproductor.duration)*100;
+
+      barraProgreso.querySelector('.avance').style.width = porcentaje+'%';
+
+    }
+
+  };
+
+}
+
+
+
+function cambiarTiempo(e,barra){
+
+  if(!audioReproductor.src || audioActivoRuta !== barra.closest('.cancion').querySelector('.btn-play').getAttribute('onclick').split("'")[1]) return;
+
+  let rect = barra.getBoundingClientRect();
+
+  let porcentaje = (e.clientX - rect.left) / rect.width;
+
+  audioReproductor.currentTime = porcentaje * audioReproductor.duration;
+
+  tiempoGuardado[audioActivoRuta] = audioReproductor.currentTime;
+
+}
+
+
+
+const guardarTiempoPeliculas = {};
+
+let videoActivoPelicula = null;
+
+
+
+// ✅ LÍNEA BASE — Solo cambias esta si cambia tu IP o puerto
+const SERVIDOR_CELULAR = "./";
+
+function reproducirPelicula(rutaVideo){
+  const ventana = document.getElementById('ventanaPelicula');
+  const reproductor = document.getElementById('videoPelicula');
+  cerrarVentana();
+
+  // Arma la dirección completa
+  const rutaCompleta = SERVIDOR_CELULAR + rutaVideo;
+
+  if(videoActivoPelicula !== rutaVideo){
+    reproductor.src = rutaCompleta;
+    videoActivoPelicula = rutaVideo;
+
+    if(guardarTiempoPeliculas[rutaVideo]) {
+      reproductor.currentTime = guardarTiempoPeliculas[rutaVideo];
+    }
+  }
+
+  reproductor.load();
+  reproductor.play().catch(err => {
+    alert("❌ No se pudo reproducir: " + err.message);
+  });
+
+  ventana.style.display = 'block';
+
+  reproductor.addEventListener('timeupdate', ()=>{
+    guardarTiempoPeliculas[rutaVideo] = reproductor.currentTime;
+  });
+}
+
+
+
+// ✅ BOTÓN REGRESAR ARREGLADO
+
+function cerrarPelicula(){
+  const reproductor = document.getElementById('videoPelicula');
+  reproductor.pause();
+  reproductor.src = '';
+  document.getElementById('ventanaPelicula').style.display = 'none'; // Cierra el video
+  document.getElementById('ventana_peliculas').style.display = 'block'; // ✅ MANTIENE visible la lista
+  videoActivoPelicula = null;
+}
+
+
+
+
+document.getElementById('videoPelicula').addEventListener('contextmenu',e=>e.preventDefault());
+
+
+
+const campoClave=document.getElementById('codigo'),botonOjo=document.getElementById('botonOjo');
+
+botonOjo.addEventListener('click',()=>{campoClave.type=campoClave.type==='password'?'text':'password';botonOjo.textContent=campoClave.type==='password'?'👁️':'🙈';});
+
+const btnVivo = document.getElementById('btnVivo');
+const ventanaVivo = document.getElementById('ventanaVivo');
+
+let hlsVivoAmerica = null;
+let hlsVivoLatina = null;
+// Control para no repetir aviso del mismo canal
+let avisoEnviado = {
+  america_tv: false,
+  latina_tv: false
+};
+let cerrandoAhora = false;  // ← PEGAS ESTA LÍNEA AHÍ MISMO
+
+function cargarCanalVivo(videoId, hlsVar, enlace, estadoId, canalId) {
+  const video = document.getElementById(videoId);
+  const estado = document.getElementById(estadoId);
+  if (!video || !enlace) return;
+
+  if (window[hlsVar]) { window[hlsVar].destroy(); window[hlsVar] = null; }
+  video.pause();
+  video.src = '';
+  estado.textContent = "🔄 Conectando...";
+  estado.style.color = "#ffcc00";
+
+  if (Hls.isSupported()) {
+    window[hlsVar] = new Hls({ maxBufferLength: 4, debug: false });
+
+    let yaConfirmadoVivo = false; // ← BANDERA: ¿YA CARGÓ BIEN?
+
+    // ✅ SI LLEGA ACÁ → SÍ ESTÁ VIVO, BLOQUEA CUALQUIER AVISO
+    window[hlsVar].on(Hls.Events.MANIFEST_PARSED, () => {
+      yaConfirmadoVivo = true;
+      estado.textContent = "✅ En vivo";
+      estado.style.color = "#66ff66";
+    });
+
+    window[hlsVar].on(Hls.Events.ERROR, (ev, dat) => {
+      // ❌ SI YA CONFIRMÓ QUE ESTÁ VIVO → NO MANDES NADA
+      if (yaConfirmadoVivo) return;
+
+      // ❌ SI NO ES FATAL → IGNÓRALO
+      if (!dat.fatal) return;
+
+      // ❌ ESPERA 5 SEGUNDOS ANTES DE DECIR QUE ESTÁ CAÍDO
+      setTimeout(() => {
+        if (yaConfirmadoVivo) return; // Si en esos 5s ya cargó → no avisa
+
+        estado.textContent = "❌ Enlace vencido";
+        estado.style.color = "#ff6666";
+
+        if (canalId && !avisoEnviado[canalId] && !cerrandoAhora) {
+          avisoEnviado[canalId] = true;
+          db.ref("enlaces_caidos/" + canalId).set({
+            canal: canalId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            fecha_hora: new Date().toLocaleString("es-PE", { timeZone: "America/Lima" }),
+            visto: false
+          });
+        }
+      }, 5000); // ⏳ 5 segundos de paciencia
+    });
+
+    window[hlsVar].loadSource(enlace);
+    window[hlsVar].attachMedia(video);
+
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = enlace;
+    estado.textContent = "✅ En vivo";
+    estado.style.color = "#66ff66";
+  }
+}
+
+btnVivo.addEventListener('click', () => {
+  const version = Date.now();
+  const URL_GIST = "https://gist.githubusercontent.com/kilomkolim84-rgb/30e5fe61ca4abd535768150a6b30af3d/raw/canales.json";
+ fetch(URL_GIST + "?v=" + Date.now())
+    .then(res => res.json())
+    .then(datos => {
+      ventanaVivo.style.display = 'block';
+      if (datos.tv_en_vivo?.america_tv?.enlace) {
+        cargarCanalVivo('vivoAmerica', 'hlsVivoAmerica', datos.tv_en_vivo.america_tv.enlace, 'estadoAmerica', 'america_tv');
+      }
+      if (datos.tv_en_vivo?.latina_tv?.enlace) {
+        cargarCanalVivo('vivoLatina', 'hlsVivoLatina', datos.tv_en_vivo.latina_tv.enlace, 'estadoLatina', 'latina_tv');
+      }
+    })
+    .catch(err => alert("❌ Error: " + err.message));
+});
+
+function cerrarVivo() {
+  cerrandoAhora = true;  // ← PEGAS ESTA LÍNEA AL PRINCIPIO
+  ventanaVivo.style.display = 'none';
+  const vAm = document.getElementById('vivoAmerica');
+  const vLa = document.getElementById('vivoLatina');
+  if (vAm) { vAm.pause(); vAm.src = ''; }
+  if (vLa) { vLa.pause(); vLa.src = ''; }
+  if (hlsVivoAmerica) { hlsVivoAmerica.destroy(); hlsVivoAmerica = null; }
+  if (hlsVivoLatina) { hlsVivoLatina.destroy(); hlsVivoLatina = null; }
+  avisoEnviado.america_tv = false;
+  avisoEnviado.latina_tv = false;
+  setTimeout(() => cerrandoAhora = false, 500);  // ← PEGAS ESTA LÍNEA AL FINAL
+}
+
+function cerrarAviso(){document.getElementById('avisoBienvenida').style.display='none';}
+
+// Función para abrir ventana, reproducir aviso y sonido
+
+document.getElementById('botonYape').addEventListener('click', function() {
+
+  // Abrir la ventana
+
+  document.getElementById('ventanaYape').style.display = 'block';
+
+
+
+  // PRIMERO TU ARCHIVO DE SONIDO: PON EL NOMBRE EXACTO
+
+  const miAudio = new Audio('sonido_yape.mp3');
+
+  miAudio.currentTime = 0;
+
+  miAudio.play().catch(function() {
+
+    // Solo si falla tu archivo, usa la voz de respaldo
+
+    const voz = new SpeechSynthesisUtterance();
+
+    voz.lang = 'es-PE';
+
+    voz.text = 'Yapea aquí. Tienes 10 minutos para realizar tu pago mediante Yape. Si se acaba el tiempo se cortará el acceso automáticamente.';
+
+    voz.rate = 1;
+
+    window.speechSynthesis.cancel();
+
+    setTimeout(() => window.speechSynthesis.speak(voz), 200);
+
+  });
+
+    // CUENTA REGRESIVA DE 40 SEGUNDOS
+  let tiempo = 50;
+  const boton = document.getElementById('botonAceptarYape');
+
+  const cuenta = setInterval(() => {
+    tiempo--;
+    boton.textContent = `Espere... (${tiempo}s)`;
+
+    if (tiempo <= 0) {
+      clearInterval(cuenta);
+      boton.disabled = false;
+      boton.textContent = "ACEPTO";
+      boton.setAttribute("onclick", "cerrarYape()");
+    }
+  }, 1000);
+
+});
+
+
+
+// Función para cerrar la ventana
+  async function cerrarYape() {
+  // SOLO CIERRA EL AVISO Y DETIENE LA VOZ, NO ABRE NADA
+  const aviso = document.getElementById('ventanaYape');
+  if (aviso) aviso.style.display = 'none';
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+  // ✅ LO QUE AGREGAMOS PARA GUARDAR EN FIREBASE
+  try {
+    const res = await fetch("https://api.ipify.org?format=json");
+    const datos = await res.json();
+    await db.ref("pagos_esperando").push({
+      ip: datos.ip,
+      mac: "pendiente",
+      fecha_hora: new Date().toLocaleString("es-PE"),
+      hora_registro: Date.now(),
+      estado: "pendiente"
+    });
+    alert("✅ Solicitud registrada correctamente");
+  } catch (e) {
+    alert("❌ Error: " + e.message);
+  }
+}
+</script>
+
+<button id="botonVolver"
+style="position:fixed;bottom:25px;left:50%;transform:translateX(-50%);background:#39FF14;color:#000;font-weight:bold;font-size:18px;padding:12px 30px;border:3px solid #000;border-radius:50px;box-shadow:0 0 20px rgba(57,255,20,0.9);z-index:999999;cursor:pointer;transition:opacity 0.3s, visibility 0.3s;opacity:1;visibility:visible;"
+onclick="
+const ventanaCam = document.getElementById('ventanaCamara');
+if (ventanaCam && ventanaCam.style.display === 'block') {
+  if (transmision) transmision.getTracks().forEach(t => t.stop());
+  if (lector) lector.reset();
+  ventanaCam.style.display = 'none';
+  return;
+}
+
+// 🎬 PRIORIDAD 1: Si la película está abierta → SOLO cierra la película
+const peli = document.getElementById('ventanaPelicula');
+if (peli && peli.style.display === 'block') {
+  const vid = document.getElementById('videoPelicula');
+  if (vid) { vid.pause(); vid.src = ''; }
+  peli.style.display = 'none';
+  // ✅ NO cierres ventana_peliculas → se queda visible la lista
+  return; // ⛔ DETENTE AQUÍ, NO SIGAS CERRANDO
+}
+
+// 🔊 Detener audio
+if(window.speechSynthesis) window.speechSynthesis.cancel();
+const audioActivo = document.querySelector('audio:not(#musicaFondo)');
+if(audioActivo){ audioActivo.pause(); audioActivo.currentTime = 0; }
+
+// 💳 Cerrar Yape
+const ventanaY = document.getElementById('ventanaYape');
+if(ventanaY) ventanaY.style.display = 'none';
+
+// 📺 Cerrar transmisión en vivo
+const vivo = document.getElementById('ventanaVivo');
+if(vivo && vivo.style.display === 'block'){
+  cerrarVivo();
+  const pv = document.getElementById('reproductorVivo');
+  if(pv) pv.src = '';
+  vivo.style.display = 'none';
+  return;
+}
+
+// 📂 Si llegamos aquí → cierra todo y vuelve al menú principal
+cerrarVentana();
+cerrarCanciones();
+cerrarAviso();
+cerrarNoticias();
+
+// ⚽ Detener deportes
+const iframeDep = document.querySelector('#contenedorReproductorDeporte iframe');
+if (iframeDep) {
+  const temp = iframeDep.src;
+  iframeDep.src = '';
+  iframeDep.src = temp;
+}
+">
+↩ VOLVER
+</button>
+
+<script>
+const boton = document.getElementById('botonVolver');
+let tiempoOcultar;
+function ocultarBoton() {
+  boton.style.opacity = '0';
+  boton.style.visibility = 'hidden';
+}
+function mostrarBoton() {
+  boton.style.opacity = '1';
+  boton.style.visibility = 'visible';
+  clearTimeout(tiempoOcultar);
+  const viendoContenido = 
+    document.getElementById('ventanaPelicula')?.style.display === 'block' ||
+    document.getElementById('ventanaVivo')?.style.display === 'block';
+  if (!viendoContenido) {
+    tiempoOcultar = setTimeout(ocultarBoton, 5000); // 5 segundos, cambia si quieres
+  }
+}
+document.addEventListener('touchstart', mostrarBoton, {passive:true});
+document.addEventListener('click', mostrarBoton, {passive:true});
+document.addEventListener('mousemove', mostrarBoton, {passive:true});
+window.onload = mostrarBoton;
+</script>
+<!-- === VERSIÓN ARREGLADA 100% === -->
+<audio id="musicaFondo" preload="auto"
+style="display:none !important;
+position:absolute; left:-9999px; top:-9999px;">
+Tu navegador no admite audio.
+</audio>
+<script>
+const audioFondo = document.getElementById('musicaFondo');
+audioFondo.volume = 0.25;
+
+const SALUDO = "saludo.mp3";
+const MUSICAS = ["1.mp3", "2.mp3", "3.mp3", "4.mp3", "5.mp3", "6.mp3", "7.mp3", "8.mp3", "9.mp3"];
+
+let yaListo = false;
+let ultimaCancion = -1;
+
+audioFondo.src = SALUDO;
+audioFondo.load();
+
+const empezar = () => {
+  if (!yaListo) {
+    yaListo = true;
+    audioFondo.play().catch(err => console.log("Revisa nombre del archivo:", err));
+  }
+};
+
+audioFondo.addEventListener('ended', () => {
+  let nueva;
+  do {
+    nueva = Math.floor(Math.random() * MUSICAS.length);
+  } while (nueva === ultimaCancion);
+  ultimaCancion = nueva;
+  audioFondo.src = MUSICAS[nueva];
+  audioFondo.load();
+  audioFondo.play().catch(() => {});
+});
+
+document.addEventListener('click', empezar, { once: true, passive: true });
+document.addEventListener('touchstart', empezar, { once: true, passive: true });
+
+const controlarFondo = () => {
+  const peli = document.getElementById('ventanaPelicula');
+  const estaPeli = peli && peli.style.display === 'block';
+
+  const vivo = document.getElementById('ventanaVivo');
+  const estaVivo = vivo && vivo.style.display === 'block';
+
+  const dep = document.getElementById('ventana_deportes');
+  const estaDeportes = dep && dep.style.display === 'block';
+
+  const hayOtro = document.querySelector('audio:not(#musicaFondo)');
+
+  if (estaPeli || estaVivo || estaDeportes || hayOtro) {
+    audioFondo.pause();
+  } else if (yaListo) {
+    audioFondo.play().catch(() => {});
+  }
+};
+
+new MutationObserver(controlarFondo).observe(document.body, { childList: true, subtree: true, attributes: true });
+</script>
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" 
+  src="https://connect.facebook.net/es_LA/sdk.js#xfbml=1&version=v22.0"></script>
+  
+  <style>
+  .ventana-noticias {
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.95);
+    z-index:9999;
+    display:none;
+    flex-direction:column;
+    padding:15px;
+  }
+  .ventana-noticias.mostrar { display:flex; }
+
+  .titulo-noticias {
+    color:#ffcc00;
+    text-align:center;
+    font-size:20px;
+    font-weight:bold;
+    padding:10px;
+    text-shadow:0 0 8px #ffcc00;
+  }
+
+  .carrusel-n {
+    position:relative;
+    width:100%;
+    max-width:420px;
+    margin:0 auto;
+    overflow:hidden;
+    flex:1;
+  }
+  .contenedor-n {
+    display:flex;
+    gap:15px;
+    transition:transform 0.35s ease;
+    height:100%;
+  }
+  .tarjeta-n {
+  flex: 0 0 92%;
+  border: 3px solid #00ffff;
+  border-radius: 15px;
+  box-shadow: 0 0 20px #00ffff;
+  background: #fff;
+  max-height: 70vh; /* Cuadro máximo 70% de pantalla */
+  overflow-y: auto; /* ✅ ESTA LÍNEA ES LA QUE FALTABA */
+  overflow-x: hidden;
+}
+
+.tarjeta-n iframe {
+  width: 100%;
+  height: 2000px; /* Más alto = más contenido */
+  border: none;
+  display: block;
+}
+
+  .navegacion-n {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    max-width:420px;
+    margin:15px auto;
+  }
+  .btn-n {
+    background:linear-gradient(90deg,#0099ff,#00ffff);
+    color:#000; font-weight:bold;
+    border:none; padding:10px 16px;
+    border-radius:8px; cursor:pointer;
+  }
+  .btn-cerrar-n {
+    background:linear-gradient(90deg,#ff3333,#ff6666);
+    box-shadow:0 0 10px #ff3333;
+  }
+  .indice-n {
+    color:#ffcc00; font-weight:bold; text-shadow:0 0 6px #ffcc00;
+  }
+</style>
+
+<!-- Ventana Noticias -->
+<div class="ventana-noticias" id="ventanaNoticias">
+  <div class="titulo-noticias" id="tituloNoticias">📰 NOTICIAS</div>
+
+  <div class="carrusel-n">
+    <div class="contenedor-n" id="cuerpoNoticias"></div>
+  </div>
+
+  <div class="navegacion-n">
+    <button class="btn-n" onclick="cambiarNoticia(-1)">⬅</button>
+    <div class="indice-n" id="indicadorN">1 / 1</div>
+    <button class="btn-n" onclick="cambiarNoticia(1)">➡</button>
+  </div>
+
+  <div style="text-align:center; margin:10px 0;">
+    <button class="btn-n btn-cerrar-n" onclick="cerrarNoticias()">CERRAR</button>
+  </div>
+</div>
+
+<script>
+let indiceN = 0;
+let listaNoticias = [];
+let anchoN = 0;
+
+function abrirNoticias() {
+  const v = document.getElementById('ventanaNoticias');
+  if (!v) {
+    alert("❌ No encontré ventanaNoticias");
+    return;
+  }
+  // Forzamos TODO para que nada lo tape
+  v.style.cssText = `
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0,0,0,0.98) !important;
+    z-index: 999999 !important;
+    flex-direction: column !important;
+    padding: 15px !important;
+  `;
+  if (listaNoticias.length === 0) cargarNoticiasDelGist();
+}
+
+function cerrarNoticias() {
+  const v = document.getElementById('ventanaNoticias');
+  if (v) v.style.display = "none";
+}
+
+async function cargarNoticiasDelGist() {
+  try {
+    const version = Date.now();
+    const urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/30e5fe61ca4abd535768150a6b30af3d/raw/canales.json?v=" + version;
+    
+    const res = await fetch(urlGist);
+    const datos = await res.json();
+
+    listaNoticias = datos.noticias?.publicaciones?.filter(n => n.activo) || [];
+    
+    document.getElementById('tituloNoticias').textContent = 
+      datos.noticias?.titulo_seccion || "📰 NOTICIAS";
+
+    armarCarruselNoticias();
+  } catch(e) {
+    alert("Error cargando noticias: " + e.message);
+  }
+}
+
+function armarCarruselNoticias() {
+  const cont = document.getElementById('cuerpoNoticias');
+  cont.innerHTML = "";
+
+  listaNoticias.forEach(n => {
+  const tarjeta = document.createElement('div');
+  tarjeta.className = "tarjeta-n";
+
+if (n.tipo === "iframe_facebook" || n.tipo === "iframe_web") {
+    // Formato viejo: iframe de Facebook
+    tarjeta.innerHTML = `<iframe src="${n.enlace}" loading="lazy" title="${n.titulo}"></iframe>`;
+  } else {
+    // Formato nuevo: foto + texto directo
+    tarjeta.innerHTML = `
+      <div style="background:#fff; color:#000; padding:15px; border-radius:12px; max-height:75vh; overflow-y:auto;">
+        <h3 style="color:#000; margin-top:0; font-size:18px;">${n.titulo}</h3>
+        ${n.imagen ? `<img src="${n.imagen}" style="width:100%; height:auto; border-radius:8px; margin:10px 0;">` : ""}
+        <p style="white-space:pre-line; font-size:15px; line-height:1.6;">${n.contenido || ""}</p>
+        <div style="margin-top:12px; font-size:13px; color:#555;">
+          ${n.autor ? `<strong>${n.autor}</strong>` : ""}
+          ${n.fecha ? ` — ${n.fecha}` : ""}
+        </div>
+      </div>
+    `;
+  }
+
+  cont.appendChild(tarjeta);
+});
+
+  setTimeout(() => {
+    const t = document.querySelector('.tarjeta-n');
+    if (t) anchoN = t.offsetWidth + 15;
+    actualizarVistaN();
+  }, 150);
+}
+
+function cambiarNoticia(paso) {
+  indiceN += paso;
+  if (indiceN < 0) indiceN = listaNoticias.length - 1;
+  if (indiceN >= listaNoticias.length) indiceN = 0;
+  actualizarVistaN();
+}
+
+function actualizarVistaN() {
+  document.getElementById('cuerpoNoticias').style.transform = 
+    `translateX(-${indiceN * anchoN}px)`;
+  document.getElementById('indicadorN').textContent = 
+    `${indiceN + 1} / ${listaNoticias.length}`;
+}
+
+let inicioXN = 0;
+document.querySelector('.carrusel-n')?.addEventListener('touchstart', 
+  e => inicioXN = e.touches[0].clientX);
+document.querySelector('.carrusel-n')?.addEventListener('touchend', e => {
+  const finXN = e.changedTouches[0].clientX;
+  if (finXN < inicioXN - 60) cambiarNoticia(1);
+  if (finXN > inicioXN + 60) cambiarNoticia(-1);
+});
+</script>
+<script>
+// ✅ FUNCIÓN QUE LLAMA LA APP AL PRESIONAR BOTÓN ATRÁS
+
+function cerrarTodoModalAbierto() {
+  const ventanaYape = document.getElementById('ventanaYape');
+  if (ventanaYape && ventanaYape.style.display !== 'none') {
+    ventanaYape.style.display = 'none';
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    return; // No vayas atrás todavía, ya cerraste algo
+  }
+
+  // 2️⃣ CIERRA ESCÁNER DE CÁMARA
+  const camara = document.querySelector('video#camara');
+  const ventanaCam = camara?.closest('div');
+  if (ventanaCam && ventanaCam.style.display !== 'none') {
+    if (window.transmision) transmision.getTracks().forEach(t => t.stop());
+    if (window.lector) lector.reset();
+    ventanaCam.style.display = 'none';
+    return;
+  }
+
+  // 3️⃣ CIERRA NOTICIAS
+  const noticias = document.getElementById('ventanaNoticias');
+  if (noticias && noticias.style.display !== 'none') {
+    noticias.style.display = 'none';
+    return;
+  }
+
+  // 4️⃣ CIERRA PELÍCULA REPRODUCIÉNDOSE
+  const peli = document.getElementById('ventanaPelicula');
+  const videoPeli = document.getElementById('videoPelicula');
+  if (peli && peli.style.display === 'block') {
+    if (videoPeli) { videoPeli.pause(); videoPeli.src = ''; }
+    peli.style.display = 'none';
+    document.getElementById('ventana_peliculas').style.display = 'block';
+    return;
+  }
+
+  // 5️⃣ CIERRA TRANSMISIÓN EN VIVO
+  const vivo = document.getElementById('ventanaVivo');
+  if (vivo && vivo.style.display === 'block') {
+    cerrarVivo();
+    return;
+  }
+
+  // 6️⃣ CIERRA CUALQUIER VENTANA DE CONTENIDO (Música, Películas lista, Deportes)
+  const contenidos = document.querySelectorAll('.ventana-contenido');
+  for (const ventana of contenidos) {
+    if (ventana.style.display === 'block') {
+      // Si es deportes, detiene reproductor e iframe
+      if (ventana.id === 'ventana_deportes') {
+        detenerDeportes();
+        const iframe = ventana.querySelector('iframe');
+        if (iframe) { const s = iframe.src; iframe.src = ''; iframe.src = s; }
+      }
+      // Si es música, detiene audio
+      if (ventana.id === 'ventana_musica') {
+        detenerTodoAudio();
+      }
+      ventana.style.display = 'none';
+      cerrarCanciones();
+      return;
+    }
+  }
+
+  // 7️⃣ CIERRA AVISO DE BIENVENIDA
+  const aviso = document.getElementById('avisoBienvenida');
+  if (aviso && aviso.style.display === 'flex') {
+    aviso.style.display = 'none';
+    return;
+  }
+
+  // ✅ Si no había nada abierto → la app navega hacia atrás sola
+  return true;
+}
+</script>
+<script>
+history.pushState({pagina:'inicio'}, '');
+
+window.addEventListener('popstate', () => {
+  // 📷 ESCÁNER QR / CÁMARA — lo que faltaba
+  const ventanaCam = document.getElementById('ventanaCamara');
+  if (ventanaCam && ventanaCam.style.display === 'block') {
+    if (transmision) transmision.getTracks().forEach(t => t.stop());
+    if (lector) lector.reset();
+    ventanaCam.style.display = 'none';
+    history.pushState({}, '');
+    return;
+  }
+
+  // 💳 YAPE
+  const yape = document.getElementById('ventanaYape');
+  if (yape && yape.style.display === 'block') {
+    yape.style.display = 'none';
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    history.pushState({}, '');
+    return;
+  }
+
+  // 📰 NOTICIAS
+  const noticias = document.getElementById('ventanaNoticias');
+  if (noticias && noticias.style.display !== 'none') {
+    cerrarNoticias();
+    history.pushState({}, '');
+    return;
+  }
+
+  // 🎬 PELÍCULA REPRODUCIÉNDOSE
+  const peli = document.getElementById('ventanaPelicula');
+  if (peli && peli.style.display === 'block') {
+    cerrarPelicula();
+    history.pushState({}, '');
+    return;
+  }
+
+  // 📺 TV EN VIVO
+  const vivo = document.getElementById('ventanaVivo');
+  if (vivo && vivo.style.display === 'block') {
+    cerrarVivo();
+    history.pushState({}, '');
+    return;
+  }
+
+  // 🎬 CARRUSEL → LISTA PELÍCULAS / ⚽ DEPORTES / 🎵 MÚSICA
+  const abiertas = document.querySelectorAll('.ventana-contenido');
+  for (const v of abiertas) {
+    if (v.style.display === 'block') {
+      if(v.id === 'ventana_deportes') detenerDeportes();
+      if(v.id === 'ventana_musica') detenerTodoAudio();
+      v.style.display = 'none';
+      history.pushState({}, '');
+      return;
+    }
+  }
+});
+
+
+// Marcar historial al abrir cada cosa
+document.getElementById('botonYape')?.addEventListener('click', ()=>setTimeout(()=>history.pushState({v:'yape'},''),30));
+document.getElementById('btnEscanear')?.addEventListener('click', ()=>setTimeout(()=>history.pushState({v:'camara'},''),30));
+document.getElementById('btnVivo')?.addEventListener('click', ()=>setTimeout(()=>history.pushState({v:'vivo'},''),30));
+
+const abrirNoticiasOriginal = abrirNoticias;
+abrirNoticias = function(){
+  abrirNoticiasOriginal?.();
+  history.pushState({v:'noticias'}, '');
+};
+
+// Carrusel tarjetas → marcar cuando abren ventana-contenido
+document.querySelectorAll('.tarjeta[data-ventana]').forEach(tarjeta => {
+  tarjeta.addEventListener('click', () => setTimeout(() => {
+    history.pushState({v: tarjeta.dataset.ventana}, '');
+  }, 30));
+});
+
+
+function abrirPremios() {
+  // Cierra otras ventanas y abre la ruleta SIEMPRE
+  document.querySelectorAll('.ventana-contenido').forEach(v => v.style.display = 'none');
+  const ventana = document.getElementById('ventana_premios');
+  if (ventana) {
+    ventana.style.display = 'block';
+    history.pushState({seccion: 'premios'}, '');
+  }
+}
+
+</script>
+</body>
+</html>
