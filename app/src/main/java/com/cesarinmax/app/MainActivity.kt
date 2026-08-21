@@ -18,6 +18,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout // ✅ NUEVO
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.*
 import org.json.JSONObject
@@ -29,6 +30,7 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var swipeRefresh: SwipeRefreshLayout // ✅ NUEVO
     private var configGist: JSONObject? = null
     private var ssidEsperado = "CESARINMAX"
     private var macRouterEsperado = ""
@@ -45,7 +47,22 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         window.decorView.keepScreenOn = true
+        
         webView = findViewById(R.id.webView)
+        
+        // ✅ DESLIZAR PARA ACTUALIZAR — CONFIGURACIÓN
+        swipeRefresh = findViewById(R.id.swipeRefresh)
+        swipeRefresh.setColorSchemeColors(
+            0xFFFFCC00.toInt(),  // Amarillo
+            0xFFFF6600.toInt(),  // Naranja
+            0xFF00CCFF.toInt()   // Celeste
+        )
+        swipeRefresh.setOnRefreshListener {
+            webView.clearCache(true)       // Limpia caché para traer lo nuevo
+            webView.reload()                // Recarga la página
+            swipeRefresh.isRefreshing = false // Quita el cargando
+        }
+        
         configurarWebView()
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
@@ -173,8 +190,6 @@ class MainActivity : AppCompatActivity() {
                 originalSystemUiVisibility = window.decorView.systemUiVisibility
                 val decor = window.decorView as FrameLayout
                 decor.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                
-                // ✅ GIRA AUTOMÁTICO A HORIZONTAL 16:9
                 ponerPantallaCompletaHorizontal()
             }
 
@@ -185,8 +200,6 @@ class MainActivity : AppCompatActivity() {
                 customView = null
                 customViewCallback = null
                 window.decorView.systemUiVisibility = originalSystemUiVisibility
-                
-                // ✅ VUELVE A ORIENTACIÓN NORMAL
                 salirPantallaCompleta()
             }
         }
