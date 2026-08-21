@@ -46,4 +46,7 @@ dependencies {
     // Generación de códigos QR
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+
+    // ✅ DESLIZAR HACIA ABAJO PARA ACTUALIZAR
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }
