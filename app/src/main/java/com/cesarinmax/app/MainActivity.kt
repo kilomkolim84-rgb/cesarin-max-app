@@ -86,7 +86,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun cargarConfigGist() {
         try {
-            // ✅ SIN HASH — SIEMPRE LEE LA ÚLTIMA VERSIÓN DEL GIST
             val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
             configGist = JSONObject(URL(urlGist).readText())
             val cr = configGist?.getJSONObject("config_red")
@@ -121,10 +120,14 @@ class MainActivity : AppCompatActivity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             allowFileAccess = true
+            allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_NO_CACHE
             userAgentString = userAgentString + " CESARINMAX/1.0"
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            
+            // ✅ CLAVE: Permite que el HTML local se conecte a Firebase/Gist
+            setAllowUniversalAccessFromFileURLs(true)
         }
         webView.clearCache(true)
         webView.clearHistory()
@@ -248,10 +251,9 @@ Por favor coordina la entrega.""".trimIndent()
         pedirPermisoCamara()
         webView.clearCache(true)
         webView.clearHistory()
-        val baseUrl = configGist?.getJSONObject("app")?.optString("enlace_portal_web")
-            ?: "https://poetic-dodol-629897.netlify.app/"
-        val url = if (baseUrl.contains("?")) "$baseUrl&t=${System.currentTimeMillis()}" else "$baseUrl?t=${System.currentTimeMillis()}"
-        webView.loadUrl(url)
+        
+        // ✅ AHORA CARGA DESDE ADENTRO DE LA APP — NO MÁS NETLIFY
+        webView.loadUrl("file:///android_asset/index.html")
         Toast.makeText(this, "✅ Conectado a CESARINMAX", Toast.LENGTH_SHORT).show()
     }
 
