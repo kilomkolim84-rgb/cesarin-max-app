@@ -154,6 +154,7 @@ class MainActivity : AppCompatActivity() {
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_NO_CACHE
             userAgentString = userAgentString + " CESARINMAX/1.0"
+            allowFileAccessFromFileURLs = true      // ✅ AGREGA ESTO
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             setAllowUniversalAccessFromFileURLs(true)
         }
