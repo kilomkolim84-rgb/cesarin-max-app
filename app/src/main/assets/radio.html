@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📻 RADIOS EN VIVO</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .titulo {
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 15px #9d4edd, 0 0 30px #9d4edd;
+            margin-bottom: 30px;
+        }
+        .contenedor {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .radio-card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 2px solid rgba(157,78,221,0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .radio-card.activa {
+            border-color: #00ff9d;
+            box-shadow: 0 0 20px rgba(0,255,157,0.4);
+            background: rgba(0,255,157,0.1);
+        }
+        .radio-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            background: rgba(157,78,221,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .radio-img svg, .radio-img span {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .radio-contenido { flex: 1; min-width: 0; }
+        .nombre { font-size: 18px; font-weight: bold; color: white; margin-bottom: 3px; }
+        .desc { font-size: 13px; color: #ccc; margin-bottom: 10px; }
+        .boton {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 15px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .boton.parado { background: linear-gradient(90deg, #7b2cbf, #9d4edd); color: white; }
+        .boton.sonando { background: linear-gradient(90deg, #00b4d8, #00ff9d); color: #000; }
+        .volver-btn {
+            display: block;
+            max-width: 500px;
+            margin: 30px auto 0;
+            padding: 15px;
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+            color: white;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+        .cargando { text-align: center; padding: 40px 20px; color: #aaa; font-size: 18px; }
+        .error { text-align: center; padding: 20px; color: #ff6b6b; background: rgba(255,107,107,0.1); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1 class="titulo">📻 RADIOS EN VIVO</h1>
+    <div class="contenedor" id="contenedor-radios"><div class="cargando">Cargando radios...</div></div>
+    
+    <!-- ✅ BOTÓN: DETIENE PRIMERO, LUEGO VUELVE -->
+    <button class="volver-btn" id="btnVolver">← VOLVER</button>
+
+<script>
+const URL_GIST = "https://gist.githubusercontent.com/kilomkolim84-rgb/51d28c69913083ca6a1cdc317f228bb6/raw/aaf5188838425f9877d35a42760839efbe57adc6/radios.json";
+
+let audioActivo = null;
+
+// ✅ DETENER AUDIO DEFINITIVAMENTE — DESTRUYE EL OBJETO
+function detenerRadioAnterior() {
+    if (audioActivo) {
+        try {
+            audioActivo.audio.pause();
+            audioActivo.audio.currentTime = 0;
+            audioActivo.audio.src = "";
+            audioActivo.audio.removeAttribute("src");
+            audioActivo.audio = null;
+        } catch(e) {}
+        
+        if (audioActivo.tarjeta) audioActivo.tarjeta.classList.remove("activa");
+        if (audioActivo.boton) {
+            audioActivo.boton.classList.remove("sonando");
+            audioActivo.boton.classList.add("parado");
+            audioActivo.boton.innerHTML = `<span>▶️</span> REPRODUCIR`;
+        }
+        audioActivo = null;
+    }
+}
+
+// ✅ AL TOCAR VOLVER → DETIENE PRIMERO, LUEGO VUELVE
+document.getElementById("btnVolver").addEventListener("click", () => {
+    detenerRadioAnterior();
+    history.back();
+});
+
+// ✅ DETIENE SI SALES, CERRAS O CAMBIAS DE PÁGINA
+window.addEventListener('pagehide', detenerRadioAnterior);
+window.addEventListener('unload', detenerRadioAnterior);
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) detenerRadioAnterior();
+});
+
+function getLogoHTML(nombre) {
+    const logos = {
+        "RPP": `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="50" fill="#FFD100"/><text x="18" y="65" font-family="Arial" font-weight="bold" font-size="36" fill="#000">RPP</text></svg>`,
+        "Radio Exitosa": `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="12" fill="#E30613"/><text x="10" y="58" font-family="Arial" font-weight="bold" font-size="18" fill="#FFF">EXITOSA</text></svg>`,
+        "La Inolvidable": `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="12" fill="#0066B3"/><text x="8" y="58" font-family="Arial" font-weight="bold" font-size="15" fill="#FFF">INOLVIDABLE</text></svg>`,
+        "Radio Nueva Q": `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="12" fill="#F5A623"/><text x="25" y="62" font-family="Arial" font-weight="bold" font-size="32" fill="#000">Q</text></svg>`,
+        "Ritmo Romántica": `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="12" fill="#E91E63"/><text x="10" y="58" font-family="Arial" font-weight="bold" font-size="13" fill="#FFF">ROMÁNTICA</text></svg>`,
+        "Radio Panamericana": `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="12" fill="#00529B"/><text x="5" y="58" font-family="Arial" font-weight="bold" font-size="13" fill="#FFF">PANAMERICANA</text></svg>`,
+        "Radio Felicidad": `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="12" fill="#FF8C00"/><text x="15" y="58" font-family="Arial" font-weight="bold" font-size="15" fill="#FFF">FELICIDAD</text></svg>`,
+        "La Zona": `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="12" fill="#1A1A1A"/><text x="25" y="62" font-family="Arial" font-weight="bold" font-size="28" fill="#00FF41">Z</text></svg>`,
+        "Onda Cero": `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#FFF" stroke="#000" stroke-width="4"/><circle cx="50" cy="50" r="25" fill="#000"/><circle cx="50" cy="50" r="8" fill="#FFF"/></svg>`,
+        "Radio Oxígeno": `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="12" fill="#00C1DE"/><text x="15" y="62" font-family="Arial" font-weight="bold" font-size="15" fill="#FFF">OXÍGENO</text></svg>`
+    };
+    return logos[nombre] || `<span>📻</span>`;
+}
+
+fetch(URL_GIST + "?v=" + Date.now(), { cache: "no-store" })
+    .then(r => {
+        if (!r.ok) throw new Error("Error: " + r.status);
+        return r.json();
+    })
+    .then(datos => mostrarRadios(datos.radios))
+    .catch(err => {
+        document.getElementById("contenedor-radios").innerHTML = `<div class="error">❌ Error cargando radios: ${err.message}</div>`;
+    });
+
+function mostrarRadios(radios) {
+    const contenedor = document.getElementById("contenedor-radios");
+    contenedor.innerHTML = "";
+
+    radios.forEach((radio, i) => {
+        const tarjeta = document.createElement("div");
+        tarjeta.className = "radio-card";
+        tarjeta.innerHTML = `
+            <div class="radio-img">${getLogoHTML(radio.nombre)}</div>
+            <div class="radio-contenido">
+                <div class="nombre">${radio.nombre}</div>
+                <div class="desc">${radio.descripcion}</div>
+                <button class="boton parado" data-i="${i}" data-url="${radio.url}">
+                    <span>▶️</span> REPRODUCIR
+                </button>
+            </div>`;
+        contenedor.appendChild(tarjeta);
+    });
+
+    contenedor.addEventListener("click", e => {
+        const boton = e.target.closest(".boton");
+        if (!boton) return;
+        const url = boton.dataset.url;
+        const i = parseInt(boton.dataset.i);
+        manejarRadio(i, url, boton);
+    });
+}
+
+function manejarRadio(indice, url, boton) {
+    const tarjeta = boton.closest(".radio-card");
+
+    if (audioActivo && audioActivo.indice === indice) {
+        detenerRadioAnterior();
+        return;
+    }
+
+    detenerRadioAnterior();
+
+    tarjeta.classList.add("activa");
+    boton.classList.remove("parado");
+    boton.classList.add("sonando");
+    boton.innerHTML = `<span>⏸️</span> PAUSAR`;
+
+    const audio = new Audio(url);
+    audio.preload = "auto";
+    audio.volume = 1;
+
+    audio.play()
+        .then(() => {
+            audioActivo = { indice, audio, tarjeta, boton };
+        })
+        .catch(err => {
+            console.error(err);
+            detenerRadioAnterior();
+            alert("⚠️ No se pudo reproducir");
+        });
+}
+</script>
+<script>
+// ✅ RECIBE ORDEN DESDE EL INDEX PARA DETENER RADIO
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.accion === 'detenerRadios') {
+    detenerRadioAnterior();
+  }
+});
+</script>
+</body>
+</html>

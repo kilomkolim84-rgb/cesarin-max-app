@@ -454,7 +454,10 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 <div class="tarjeta" data-ventana="musica" onclick="reproducirAudioRuta('musica.mp3');"><img src="portada_musica.jpg" alt="Música"><div class="etiqueta">🎵 MÚSICA</div></div>
 -->
 
-      <div class="tarjeta" data-ventana="peliculas" onclick="reproducirAudioRuta('peliculas.mp3');"><img src="portada_peliculas.jpg" alt="Películas"><div class="etiqueta">🎬 PELÍCULAS</div></div>
+      <div class="tarjeta" data-ventana="radios" onclick="reproducirAudioRuta('radios.mp3');">
+  <img src="portada_radios.jpg" alt="Radios">
+  <div class="etiqueta">📻 RADIOS</div>
+</div>
 
    <div class="tarjeta" onclick="abrirNoticias(); reproducirAudioRuta('noticias.mp3');">
 <img src="portada_noticias.jpg" alt="Noticias"><div class="etiqueta">📰 NOTICIAS</div></div>
@@ -537,54 +540,12 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 
 </div>
 
-<div class="ventana-contenido" id="ventana_peliculas">
-
-  <div class="encabezado-ventana"><span class="cerrar" onclick="cerrarVentana()">✕ CERRAR</span><span class="titulo-ventana">🎬 PELÍCULAS</span></div>
-
-  <div class="cuadricula-peliculas">
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/kickboxer.mp4')"><img src="imagenes/kickboxer.jpg" alt="Kickboxer"><div class="nombre-pelicula">KICKBOXER</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/shrek.mp4')"><img src="imagenes/shrek.jpg" alt="Shrek"><div class="nombre-pelicula">SHREK</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/rey mono.mp4')"><img src="imagenes/rey mono.jpg" alt="Rey mono"><div class="nombre-pelicula">REY MONO</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/Arthur.mp4')"><img src="imagenes/arthur.jpg" alt="Arthur"><div class="nombre-pelicula">ARTHUR</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/corazon.mp4')"><img src="imagenes/corazon.jpg" alt="Corazon"><div class="nombre-pelicula">CORAZON</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/Mandalorian.mp4')"><img src="imagenes/Mandalorian.jpg" alt="Mandalorian"><div class="nombre-pelicula">MANDALORIAN</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/amos.mp4')"><img src="imagenes/amos.jpg" alt="amos"><div class="nombre-pelicula">AMOS</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/Garfio.mp4')"><img src="imagenes/garfio.jpg" alt="garfio"><div class="nombre-pelicula">GARFIO</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/rapido2.mp4')"><img src="imagenes/rapido2.jpg" alt="Rápido y Furioso 2"><div class="nombre-pelicula">RÁPIDO Y FURIOSO 2</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/rocky1.mp4')"><img src="imagenes/rocky1.jpg" alt="Rocky 1"><div class="nombre-pelicula">ROCKY 1</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/rocky2.mp4')"><img src="imagenes/rocky2.jpg" alt="Rocky 2"><div class="nombre-pelicula">ROCKY 2</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/johnwick1.mp4')"><img src="imagenes/johnwick1.jpg" alt="John Wick 1"><div class="nombre-pelicula">JOHN WICK 1</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/avengers.mp4')"><img src="imagenes/avengers.jpg" alt="Los Vengadores"><div class="nombre-pelicula">LOS VENGADORES</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/spiderman.mp4')"><img src="imagenes/spiderman.jpg" alt="Spiderman"><div class="nombre-pelicula">SPIDERMAN</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/batman.mp4')"><img src="imagenes/batman.jpg" alt="Batman"><div class="nombre-pelicula">BATMAN</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/transformers.mp4')"><img src="imagenes/transformers.jpg" alt="Transformers"><div class="nombre-pelicula">TRANSFORMERS</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/jurassic.mp4')"><img src="imagenes/jurassic.jpg" alt="Jurassic Park"><div class="nombre-pelicula">JURASSIC PARK</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/titanic.mp4')"><img src="imagenes/titanic.jpg" alt="Titanic"><div class="nombre-pelicula">TITANIC</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/gladiador.mp4')"><img src="imagenes/gladiador.jpg" alt="Gladiador"><div class="nombre-pelicula">GLADIADOR</div></div>
-
-    <div class="tarjeta-pelicula" onclick="reproducirPelicula('peliculas/300.mp4')"><img src="imagenes/300.jpg" alt="300"><div class="nombre-pelicula">300</div></div>
-
+<div class="ventana-contenido" id="ventana_radios">
+  <div class="encabezado-ventana">
+    <span class="cerrar" onclick="cerrarVentana()">✕ CERRAR</span>
+    <span class="titulo-ventana">📻 RADIOS EN VIVO</span>
   </div>
-
+  <iframe src="radio.html" style="width: 100%; height: 80vh; border: none; border-radius: 8px;"></iframe>
 </div>
 
 <!-- VENTANA NOTICIAS CARRUSEL -->
@@ -1220,6 +1181,23 @@ tarjetas.forEach(t=>{
 
 
 function cerrarVentana(){
+// ✅ DETENER RADIOS ANTES DE CERRAR
+     const iframeRadios = document.querySelector('iframe[src="radio.html"]');
+     if (iframeRadios) {
+         // Manda la orden de detener
+         iframeRadios.contentWindow.postMessage({accion: 'detenerRadios'}, '*');
+         // Espera un poquito y luego cierra
+         setTimeout(() => {
+             iframeRadios.src = iframeRadios.src; // Corta el audio por las dudas
+         }, 50);
+     }
+
+  document.querySelectorAll('.ventana-contenido').forEach(v=>v.style.display='none');
+  if(audioActivoRuta)tiempoGuardado[audioActivoRuta]=audioReproductor.currentTime;
+  audioReproductor.pause();
+
+  // ... el resto sigue igual ...
+
   document.querySelectorAll('.ventana-contenido').forEach(v=>v.style.display='none');
   if(audioActivoRuta)tiempoGuardado[audioActivoRuta]=audioReproductor.currentTime;
   audioReproductor.pause();
@@ -1743,9 +1721,12 @@ const controlarFondo = () => {
   const dep = document.getElementById('ventana_deportes');
   const estaDeportes = dep && dep.style.display === 'block';
 
+  const radios = document.getElementById('ventana_radios');
+  const estaRadios = radios && radios.style.display === 'block';
+
   const hayOtro = document.querySelector('audio:not(#musicaFondo)');
 
-  if (estaPeli || estaVivo || estaDeportes || hayOtro) {
+  if (estaPeli || estaVivo || estaDeportes || estaRadios || hayOtro) {
     audioFondo.pause();
   } else if (yaListo) {
     audioFondo.play().catch(() => {});
