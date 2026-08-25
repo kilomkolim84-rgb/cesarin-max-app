@@ -159,7 +159,14 @@ function getLogoHTML(nombre) {
     return logos[nombre] || `<span>📻</span>`;
 }
 
-fetch(URL_GIST + "?v=" + Date.now(), { cache: "no-store" })
+fetch(URL_GIST, { 
+  cache: "no-store",
+  headers: { 
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0"
+  }
+})
     .then(r => {
         if (!r.ok) throw new Error("Error: " + r.status);
         return r.json();
