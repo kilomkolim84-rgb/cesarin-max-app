@@ -2,6 +2,7 @@ package com.cesarinmax.app
 
 import android.app.AlertDialog
 import android.Manifest
+import android.content.Context  // ✅ AGREGA ESTA LÍNEA
 import android.content.pm.ActivityInfo
 import android.content.Intent
 import android.content.pm.PackageManager
