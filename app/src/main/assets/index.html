@@ -438,7 +438,7 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 
   </form>
 
-    <button type="button" id="botonYape" class="boton-yape" style="display:none">
+    <button type="button" id="botonYape" class="boton-yape">
 
     <img src="yape.png" alt="Yape" class="logo-boton-yape">
 
@@ -464,7 +464,7 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 
       <div class="tarjeta" data-ventana="deportes" onclick="reproducirAudioRuta('deportes.mp3');"><img src="portada_deportes.jpg" alt="Deportes"><div class="etiqueta">⚽ DEPORTES</div></div>
       
-  <div class="tarjeta" data-ventana="premios" onclick="reproducirAudioRuta('premios.mp3'); abrirPremios();" style="display:none">
+  <div class="tarjeta" data-ventana="premios" onclick="reproducirAudioRuta('premios.mp3'); abrirPremios();">
   <img src="portada_regalo.jpg" alt="Premios">
   <div class="etiqueta">🎁 PREMIOS</div>
 </div>
@@ -2130,12 +2130,14 @@ async function verificarRed() {
     // ⚡ Intenta conectar a tu MikroTik — si responde = estás ADENTRO
     await fetch("http://172.16.1.1", {
       mode: "no-cors",
-      signal: AbortSignal.timeout(1200), // ⏱️ 1.2 segundos
+      signal: AbortSignal.timeout(1500), // ⏱️ 1.5 segundos
       cache: "no-store"
     });
     enRed = true; // ✅ SÍ CONECTÓ → estás en tu red
+    console.log("✅ ESTÁS EN CESARINMAX — Mostrando Yape y Premios");
   } catch {
     enRed = false; // ⛔ NO CONECTÓ → estás con datos móviles u otra red
+    console.log("📡 Fuera de CESARINMAX — Yape y Premios ocultos");
   }
 
   // 🎯 SOLO los muestra si estás en tu red
@@ -2151,8 +2153,10 @@ async function verificarRed() {
   }
 }
 
-// 🚀 Ejecutar al cargar la página
-document.addEventListener('DOMContentLoaded', verificarRed);
+// 🚀 Ejecutar al cargar la página — con retraso para que cargue todo
+window.addEventListener('load', () => {
+  setTimeout(verificarRed, 500); // Espera medio segundo
+});
 // 🔄 Revisar cada 5 segundos por si cambias de red
 setInterval(verificarRed, 5000);
 </script>
