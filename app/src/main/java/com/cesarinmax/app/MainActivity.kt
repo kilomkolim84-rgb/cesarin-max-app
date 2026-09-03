@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
     private var originalSystemUiVisibility: Int = 0
     private var orientacionOriginal: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
-    // ========== RADIO: Mantener audio con pantalla apagada — COMPLETO ==========
+    // ========== RADIO: Audio en segundo plano — COMPLETO ==========
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private var audioManager: AudioManager? = null
@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "cesarinmax:WifiLock")
         wifiLock?.acquire()
 
-        // 🔊 PEDIR FOCO DE AUDIO — OBLIGATORIO para que Android no corte
+        // 🔊 Pedir foco de audio — OBLIGATORIO
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
@@ -106,7 +106,7 @@ class MainActivity : AppCompatActivity() {
             audioFocusGranted = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         }
 
-        // 🎵 MEDIA SESSION — Android reconoce que es reproducción de audio
+        // 🎵 MediaSession — Android reconoce que es reproducción
         mediaSession = MediaSession(this, "CESARINMAX_RADIO").apply {
             setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
             setCallback(object : MediaSession.Callback() {})
@@ -130,7 +130,7 @@ class MainActivity : AppCompatActivity() {
         mediaSession?.isActive = false
         mediaSession?.release()
     }
-    // =======================================================================
+    // ===============================================================
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -163,18 +163,35 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ CLAVE: Fingir que la app sigue visible para que el HTML NO detenga el audio
+    // ✅ CLAVE: EVITAR QUE EL WEBVIEW PAUSE EL AUDIO AL SALIR DE LA APP
     override fun onPause() {
         super.onPause()
+
         // ❌ NO llamar webView.onPause() — eso corta el audio
-        
-        // ✅ ENGAÑAR AL JAVASCRIPT para que NO detecte pausa por visibilidad
+
+        // 🔑 ENGAÑAR AL HTML PARA QUE NO DETENGA EL AUDIO
         webView.evaluateJavascript("""
-            Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true, configurable: true });
-            Object.defineProperty(document, 'hidden', { value: false, writable: true, configurable: true });
-            window.dispatchEvent(new Event('visibilitychange'));
-            document.dispatchEvent(new Event('visibilitychange'));
+            // Bloquear detección de segundo plano
+            Object.defineProperty(document, 'visibilityState', {
+                get: function() { return 'visible'; },
+                configurable: true
+            });
+            Object.defineProperty(document, 'hidden', {
+                get: function() { return false; },
+                configurable: true
+            });
+            // Reanudar audio si se pausó
+            document.querySelectorAll('audio, video').forEach(function(el) {
+                if (el.paused && el.src) el.play().catch(function(e) {});
+            });
+            // Bloquear eventos de pausa
+            window.addEventListener('blur', function(e) { e.stopImmediatePropagation(); }, true);
+            document.addEventListener('visibilitychange', function(e) { e.stopImmediatePropagation(); }, true);
         """.trimIndent(), null)
+
+        // Asegurar que todo siga activo
+        if (wakeLock?.isHeld != true) mantenerAudioActivo()
+        mediaSession?.isActive = true
     }
 
     override fun onResume() {
