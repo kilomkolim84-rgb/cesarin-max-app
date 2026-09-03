@@ -438,7 +438,7 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 
   </form>
 
-    <button type="button" id="botonYape" class="boton-yape">
+    <button type="button" id="botonYape" class="boton-yape" style="display:none">
 
     <img src="yape.png" alt="Yape" class="logo-boton-yape">
 
@@ -464,7 +464,7 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 
       <div class="tarjeta" data-ventana="deportes" onclick="reproducirAudioRuta('deportes.mp3');"><img src="portada_deportes.jpg" alt="Deportes"><div class="etiqueta">⚽ DEPORTES</div></div>
       
-  <div class="tarjeta" data-ventana="premios" onclick="reproducirAudioRuta('premios.mp3'); abrirPremios();">
+  <div class="tarjeta" data-ventana="premios" onclick="reproducirAudioRuta('premios.mp3'); abrirPremios();" style="display:none">
   <img src="portada_regalo.jpg" alt="Premios">
   <div class="etiqueta">🎁 PREMIOS</div>
 </div>
@@ -2110,43 +2110,27 @@ function abrirPremios() {
   }
 }
 
-<!-- ✅ BLOQUEO RULETA + YAPE — OCULTO POR DEFECTO, SOLO SE MUESTRA EN RED CESARINMAX -->
+<!-- ✅ SOLO MUESTRA RULETA + YAPE SI ESTÁS EN CESARINMAX -->
 <script>
-// 🔒 POR DEFECTO: OCULTOS HASTA QUE SE CONFIRME LA RED
-document.addEventListener('DOMContentLoaded', function() {
+async function verificarRed() {
+  let enRed = false;
+  try {
+    // ⚡ Intenta conectar a tu MikroTik — si responde = estás ADENTRO
+    await fetch("http://172.16.1.1", {
+      mode: "no-cors",
+      signal: AbortSignal.timeout(1200), // ⏱️ 1.2 segundos
+      cache: "no-store"
+    });
+    enRed = true; // ✅ SÍ CONECTÓ → estás en tu red
+  } catch {
+    enRed = false; // ⛔ NO CONECTÓ → estás con datos móviles u otra red
+  }
+
+  // 🎯 SOLO los muestra si estás en tu red
   const ruleta = document.querySelector('[data-ventana="premios"]');
   const yape = document.getElementById('botonYape');
   
-  // ⛔ DESDE EL PRINCIPIO: OCULTOS
-  if (ruleta) ruleta.style.display = 'none';
-  if (yape) yape.style.display = 'none';
-  
-  verificarRedLocal(ruleta, yape);
-});
-
-async function verificarRedLocal(ruleta, yape) {
-  let estaEnRed = false;
-  
-  try {
-    // ⚡ INTENTA LLEGAR A TU MIKROTIK — SI RESPONDE = ESTÁS ADENTRO
-    const controlador = new AbortController();
-    const tiempoFuera = setTimeout(() => controlador.abort(), 1200); // ⏱️ 1.2 segundos
-    
-    await fetch("http://172.16.1.1/", {
-      mode: "no-cors",
-      signal: controlador.signal,
-      cache: "no-store"
-    });
-    
-    clearTimeout(tiempoFuera);
-    estaEnRed = true; // ✅ SÍ CONECTÓ → ESTÁS ADENTRO
-    
-  } catch (err) {
-    estaEnRed = false; // ⛔ NO CONECTÓ → AFUERA (datos móviles u otra red)
-  }
-  
-  // 🎯 APLICA EL RESULTADO
-  if (estaEnRed) {
+  if (enRed) {
     if (ruleta) ruleta.style.display = 'flex';
     if (yape) yape.style.display = 'flex';
   } else {
@@ -2155,12 +2139,10 @@ async function verificarRedLocal(ruleta, yape) {
   }
 }
 
-// 🔄 REVISAR CADA 10 SEGUNDOS
-setInterval(() => {
-  const ruleta = document.querySelector('[data-ventana="premios"]');
-  const yape = document.getElementById('botonYape');
-  verificarRedLocal(ruleta, yape);
-}, 10000);
+// 🚀 Ejecutar al cargar la página
+document.addEventListener('DOMContentLoaded', verificarRed);
+// 🔄 Revisar cada 5 segundos por si cambias de red
+setInterval(verificarRed, 5000);
 </script>
 
 </body>
