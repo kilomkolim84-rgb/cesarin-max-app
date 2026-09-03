@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
     private val ssidEsperado = "CESARINMAX"
     
     // ✅ PONES AQUÍ LAS 2 MACs CUANDO LAS TENGAS
-    private val macRouterPermitidas = setOf(
+    private val MODO_PRUEBA_SIEMPRE = true  // ⚠️ MANTENER EN true para probar
         "08:55:31:6A:49:99",  // ← MAC DEL HUAWEI — REEMPLAZA
         "11:22:33:44:55:66"   // ← MAC DEL RADIO 2.4/5GHz — REEMPLAZA
     )
