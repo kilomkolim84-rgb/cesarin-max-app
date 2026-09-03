@@ -38,9 +38,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private var configGist: JSONObject? = null
-    private var ssidEsperado = "CESARINMAX"
-    private var macRouterEsperado = ""
-    private val MODO_PRUEBA_SIEMPRE = true
+    
+    // ========== 🔒 RED PERMITIDA — CESARINMAX + 2 MACs ==========
+    private val ssidEsperado = "CESARINMAX"
+    
+    // ✅ PONES AQUÍ LAS 2 MACs CUANDO LAS TENGAS
+    private val macRouterPermitidas = setOf(
+        "AA:BB:CC:DD:EE:FF",  // ← MAC DEL HUAWEI — REEMPLAZA
+        "11:22:33:44:55:66"   // ← MAC DEL RADIO 2.4/5GHz — REEMPLAZA
+    )
+    
+    private val MODO_PRUEBA_SIEMPRE = true  // ⚠️ PONER EN false CUANDO TERMINES DE PROBAR
+    // ===============================================================
+    
     private val REQUEST_CAMERA = 1001
     private var numeroAdminWhatsapp = "+51974634113"
 
@@ -49,7 +59,7 @@ class MainActivity : AppCompatActivity() {
     private var originalSystemUiVisibility: Int = 0
     private var orientacionOriginal: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
-    // ========== RADIO: Audio en segundo plano ==========
+    // ========== 🎵 RADIO — Audio en segundo plano ==========
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private var audioManager: AudioManager? = null
@@ -128,6 +138,24 @@ class MainActivity : AppCompatActivity() {
     }
     // ===============================================================
 
+    // ========== 🔒 VALIDACIÓN DE RED — SSID + MAC ==========
+    private fun verificarRed(): Boolean {
+        if (MODO_PRUEBA_SIEMPRE) return true
+        
+        val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+        val info = wifi.connectionInfo
+        val ssid = info.ssid.replace("\"", "").replace("<unknown ssid>", "")
+        val macConectada = info.bssid?.uppercase() ?: ""
+        
+        val ssidCorrecto = ssid.equals(ssidEsperado, ignoreCase = true)
+        val macCorrecta = macConectada.isNotEmpty() && macRouterPermitidas.any { 
+            it.uppercase() == macConectada 
+        }
+        
+        return ssidCorrecto && macCorrecta
+    }
+    // ===============================================================
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -142,9 +170,9 @@ class MainActivity : AppCompatActivity() {
             0xFF00CCFF.toInt()
         )
 
-        // ✅ SOLUCIÓN DEL SCROLL: Solo actualizar cuando estás en el TOPE
+        // ✅ SCROLL ARREGLADO — Solo refresca en el TOPE
         swipeRefresh.setOnChildScrollUpCallback { _, _ ->
-            webView.scrollY > 0 // Si NO estás arriba → NO permite refrescar, deja subir el scroll
+            webView.scrollY > 0
         }
 
         swipeRefresh.setOnRefreshListener {
@@ -165,7 +193,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ Mantener audio al salir de la app
+    // ✅ AUDIO SIGUE EN SEGUNDO PLANO
     override fun onPause() {
         super.onPause()
         webView.evaluateJavascript("""
@@ -219,29 +247,17 @@ class MainActivity : AppCompatActivity() {
             val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
             configGist = JSONObject(URL(urlGist).readText())
             val cr = configGist?.getJSONObject("config_red")
-            ssidEsperado = cr?.optString("ssid_esperado", "CESARINMAX")!!
-            macRouterEsperado = cr?.optString("mac_router", "")!!
             val ca = configGist?.getJSONObject("app")
             numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113")!!
         } catch (e: Exception) { e.printStackTrace() }
     }
 
-    private fun verificarRed(): Boolean {
-        if (MODO_PRUEBA_SIEMPRE) return true
-        if (configGist?.getJSONObject("config_red")?.optBoolean("modo_prueba", false) == true) return true
-        val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-        val info = wifi.connectionInfo
-        val ssid = info.ssid.replace("\"", "").replace("<unknown ssid>", "")
-        if (macRouterEsperado.isBlank()) return ssid.equals(ssidEsperado, ignoreCase = true)
-        return ssid.equals(ssidEsperado, ignoreCase = true) && info.bssid.equals(macRouterEsperado, ignoreCase = true)
-    }
-
     private fun mostrarMensajeRedNoAutorizada() {
         AlertDialog.Builder(this)
             .setTitle("⚠️ Red no autorizada")
-            .setMessage("Conéctate a la red WiFi \"$ssidEsperado\"")
+            .setMessage("Conéctate a la red WiFi \"$ssidEsperado\" para usar la Ruleta y Yape.\n\nLa radio y WhatsApp siguen funcionando.")
             .setCancelable(false)
-            .setPositiveButton("Cerrar app") { _, _ -> finish() }
+            .setPositiveButton("✅ Entendido", null)
             .show()
     }
 
@@ -397,7 +413,18 @@ Por favor coordina la entrega.""".trimIndent()
         webView.clearCache(true)
         webView.clearHistory()
         webView.loadUrl("file:///android_asset/index.html")
-        Toast.makeText(this, "✅ Conectado a CESARINMAX", Toast.LENGTH_SHORT).show()
+        
+        // ✅ ENVIAR ESTADO DE RED AL HTML — Ruleta y Yape SOLO si está en CESARINMAX + MAC válida
+        val enRedPermitida = verificarRed()
+        webView.evaluateJavascript("""
+            window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: $enRedPermitida }, '*');
+        """.trimIndent(), null)
+        
+        if (enRedPermitida) {
+            Toast.makeText(this, "✅ CESARINMAX — Ruleta y Yape activos", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "⚠️ Fuera de red — Ruleta y Yape desactivados", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onBackPressed() {
