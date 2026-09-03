@@ -2,19 +2,14 @@ package com.cesarinmax.app
 
 import android.app.AlertDialog
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
-import android.media.AudioAttributes
-import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
-import android.os.PowerManager
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.*
@@ -23,7 +18,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout // ✅ NUEVO
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.*
 import org.json.JSONObject
@@ -35,7 +30,7 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
-    private lateinit var swipeRefresh: SwipeRefreshLayout
+    private lateinit var swipeRefresh: SwipeRefreshLayout // ✅ NUEVO
     private var configGist: JSONObject? = null
     private var ssidEsperado = "CESARINMAX"
     private var macRouterEsperado = ""
@@ -48,76 +43,6 @@ class MainActivity : AppCompatActivity() {
     private var originalSystemUiVisibility: Int = 0
     private var orientacionOriginal: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
-    // ========== RADIO: Mantener audio activo con pantalla apagada ==========
-    private var wakeLock: PowerManager.WakeLock? = null
-    private var wifiLock: WifiManager.WifiLock? = null
-    private var audioManager: AudioManager? = null
-    private var audioFocusRequest: AudioFocusRequest? = null
-    private var audioFocusGranted = false
-
-    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
-        when (focusChange) {
-            AudioManager.AUDIOFOCUS_GAIN -> audioFocusGranted = true
-            AudioManager.AUDIOFOCUS_LOSS,
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> audioFocusGranted = false
-        }
-    }
-
-    private fun mantenerAudioActivo() {
-        // 🔒 Mantener CPU encendida
-        val pm = getSystemService(POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
-            "cesarinmax:radioWakeLock"
-        )
-        wakeLock?.acquire(12 * 60 * 60 * 1000L) // 12 horas
-
-        // 📶 Mantener WiFi encendido aunque se apague la pantalla
-        val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-        wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "cesarinmax:WifiLock")
-        wifiLock?.acquire()
-
-        // 🔊 PEDIR FOCO DE AUDIO — CLAVE para que Android no corte el audio
-        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build()
-                )
-                setAcceptsDelayedFocusGain(true)
-                setOnAudioFocusChangeListener(audioFocusChangeListener)
-                build()
-            }
-            audioFocusRequest?.let { req ->
-                val result = audioManager?.requestAudioFocus(req)
-                audioFocusGranted = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            val result = audioManager?.requestAudioFocus(
-                audioFocusChangeListener,
-                AudioManager.STREAM_MUSIC,
-                AudioManager.AUDIOFOCUS_GAIN
-            )
-            audioFocusGranted = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-        }
-    }
-
-    private fun liberarBloqueos() {
-        if (wakeLock?.isHeld == true) wakeLock?.release()
-        if (wifiLock?.isHeld == true) wifiLock?.release()
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            audioFocusRequest?.let { audioManager?.abandonAudioFocusRequest(it) }
-        } else {
-            @Suppress("DEPRECATION")
-            audioManager?.abandonAudioFocus(audioFocusChangeListener)
-        }
-    }
-    // =======================================================================
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -125,22 +50,20 @@ class MainActivity : AppCompatActivity() {
         
         webView = findViewById(R.id.webView)
         
-        // ✅ DESLIZAR PARA ACTUALIZAR
+        // ✅ DESLIZAR PARA ACTUALIZAR — CONFIGURACIÓN
         swipeRefresh = findViewById(R.id.swipeRefresh)
         swipeRefresh.setColorSchemeColors(
-            0xFFFFCC00.toInt(),
-            0xFFFF6600.toInt(),
-            0xFF00CCFF.toInt()
+            0xFFFFCC00.toInt(),  // Amarillo
+            0xFFFF6600.toInt(),  // Naranja
+            0xFF00CCFF.toInt()   // Celeste
         )
         swipeRefresh.setOnRefreshListener {
-            webView.clearCache(true)
-            webView.reload()
-            swipeRefresh.isRefreshing = false
+            webView.clearCache(true)       // Limpia caché para traer lo nuevo
+            webView.reload()                // Recarga la página
+            swipeRefresh.isRefreshing = false // Quita el cargando
         }
         
         configurarWebView()
-        mantenerAudioActivo()
-        
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
             withContext(Dispatchers.Main) {
@@ -150,28 +73,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ NO PAUSAR NADA AL PERDER FOCO — EL AUDIO SIGUE
     override fun onPause() {
         super.onPause()
-        webView.evaluateJavascript("""
-            Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
-            Object.defineProperty(document, 'hidden', { value: false, writable: true });
-            document.dispatchEvent(new Event('visibilitychange'));
-        """.trimIndent(), null)
+        webView.evaluateJavascript("document.querySelectorAll('video, audio').forEach(el => el.pause());", null)
+        webView.onPause()
     }
 
     override fun onResume() {
         super.onResume()
         webView.onResume()
-        if (wakeLock?.isHeld != true) mantenerAudioActivo()
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        liberarBloqueos()
+        webView.evaluateJavascript("document.querySelectorAll('video, audio').forEach(el => { el.pause(); el.currentTime=0; });", null)
         webView.stopLoading()
         webView.removeAllViews()
         webView.destroy()
+        super.onDestroy()
     }
 
     private fun pedirPermisoCamara() {
@@ -236,27 +154,15 @@ class MainActivity : AppCompatActivity() {
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_NO_CACHE
             userAgentString = userAgentString + " CESARINMAX/1.0"
-            allowFileAccessFromFileURLs = true
+            allowFileAccessFromFileURLs = true      // ✅ AGREGA ESTO
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             setAllowUniversalAccessFromFileURLs(true)
-            databaseEnabled = true
         }
         webView.clearCache(true)
         webView.clearHistory()
         webView.addJavascriptInterface(WebAppInterface(this), "Android")
 
         webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                webView.evaluateJavascript("""
-                    (function(){
-                        Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true, configurable: true });
-                        Object.defineProperty(document, 'hidden', { value: false, writable: true, configurable: true });
-                        window.addEventListener('visibilitychange', function(e) { e.stopImmediatePropagation(); }, true);
-                    })();
-                """.trimIndent(), null)
-            }
-
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 url ?: return false
                 val u = url.lowercase()
