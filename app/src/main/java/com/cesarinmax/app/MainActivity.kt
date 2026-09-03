@@ -5,7 +5,6 @@ import android.Manifest
 import android.content.pm.ActivityInfo
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -39,16 +38,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private var configGist: JSONObject? = null
     
-    // ========== 🔒 RED PERMITIDA — CESARINMAX + 2 MACs ==========
+    // ========== 🔒 RED PERMITIDA — CESARINMAX + MACs ==========
     private val ssidEsperado = "CESARINMAX"
     
-    // ✅ PONES AQUÍ LAS 2 MACs CUANDO LAS TENGAS
-    private val MODO_PRUEBA_SIEMPRE = true  // ⚠️ MANTENER EN true para probar
-        "08:55:31:6A:49:99",  // ← MAC DEL HUAWEI — REEMPLAZA
-        "11:22:33:44:55:66"   // ← MAC DEL RADIO 2.4/5GHz — REEMPLAZA
+    // ✅ PONES AQUÍ LA MAC DEL WiFi CESARINMAX (BSSID)
+    private val macRouterPermitidas = setOf(
+        "AA:BB:CC:DD:EE:FF"   // ← MAC DEL PUNTO DE ACCESO WiFi — REEMPLAZA
     )
     
-    private val MODO_PRUEBA_SIEMPRE = true  // ⚠️ PONER EN false CUANDO TERMINES DE PROBAR
+    private val MODO_PRUEBA_SIEMPRE = true  // ⚠️ En false cuando ya pongas la MAC correcta
     // ===============================================================
     
     private val REQUEST_CAMERA = 1001
@@ -170,7 +168,6 @@ class MainActivity : AppCompatActivity() {
             0xFF00CCFF.toInt()
         )
 
-        // ✅ SCROLL ARREGLADO — Solo refresca en el TOPE
         swipeRefresh.setOnChildScrollUpCallback { _, _ ->
             webView.scrollY > 0
         }
@@ -193,27 +190,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ DETENER MÚSICA DE FONDO AL SALIR / BLOQUEAR PANTALLA — RADIO SIGUE SONANDO
+    // ✅ DETENER MÚSICA DE FONDO AL SALIR / BLOQUEAR PANTALLA — RADIO SIGUE
     override fun onPause() {
         super.onPause()
-        
-        // ⛔ DETENER SOLO LA MÚSICA DE FONDO
         webView.evaluateJavascript("javascript:pausarMusicaFondo();", null)
-
-        // 📻 LA RADIO SIGUE ACTIVA — NO TOCAR NADA DE AUDIO
         if (wakeLock?.isHeld != true) mantenerAudioActivo()
         mediaSession?.isActive = true
     }
 
-    // ✅ RETOMAR MÚSICA DE FONDO AL VOLVER A LA APP
     override fun onResume() {
         super.onResume()
         webView.onResume()
-        
-        // ▶️ REPRODUCIR MÚSICA DE FONDO SI ESTABA ACTIVA
         webView.evaluateJavascript("javascript:reproducirMusicaFondo();", null)
-
-        // 📻 LA RADIO SIGUE FUNCIONANDO
         if (wakeLock?.isHeld != true) mantenerAudioActivo()
         mediaSession?.isActive = true
     }
@@ -241,7 +229,6 @@ class MainActivity : AppCompatActivity() {
         try {
             val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
             configGist = JSONObject(URL(urlGist).readText())
-            val cr = configGist?.getJSONObject("config_red")
             val ca = configGist?.getJSONObject("app")
             numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113")!!
         } catch (e: Exception) { e.printStackTrace() }
@@ -409,7 +396,6 @@ Por favor coordina la entrega.""".trimIndent()
         webView.clearHistory()
         webView.loadUrl("file:///android_asset/index.html")
         
-        // ✅ ENVIAR ESTADO DE RED AL HTML — Ruleta y Yape SOLO si está en CESARINMAX + MAC válida
         val enRedPermitida = verificarRed()
         webView.evaluateJavascript("""
             window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: $enRedPermitida }, '*');
