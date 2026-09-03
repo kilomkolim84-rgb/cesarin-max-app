@@ -10,6 +10,7 @@ import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.os.PowerManager
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.*
@@ -18,7 +19,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout // ✅ NUEVO
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.*
 import org.json.JSONObject
@@ -30,7 +31,7 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
-    private lateinit var swipeRefresh: SwipeRefreshLayout // ✅ NUEVO
+    private lateinit var swipeRefresh: SwipeRefreshLayout
     private var configGist: JSONObject? = null
     private var ssidEsperado = "CESARINMAX"
     private var macRouterEsperado = ""
@@ -43,6 +44,31 @@ class MainActivity : AppCompatActivity() {
     private var originalSystemUiVisibility: Int = 0
     private var orientacionOriginal: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
+    // ========== RADIO: Mantener audio activo con pantalla apagada ==========
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+
+    private fun mantenerAudioActivo() {
+        // Mantener CPU encendida para que no se duerma la reproducción
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        wakeLock = pm.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
+            "cesarinmax:radioWakeLock"
+        )
+        wakeLock?.acquire(12 * 60 * 60 * 1000L) // 12 horas máximo
+
+        // Mantener WiFi encendido aunque se apague la pantalla
+        val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+        wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "cesarinmax:WifiLock")
+        wifiLock?.acquire()
+    }
+
+    private fun liberarBloqueos() {
+        if (wakeLock?.isHeld == true) wakeLock?.release()
+        if (wifiLock?.isHeld == true) wifiLock?.release()
+    }
+    // =======================================================================
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -50,20 +76,24 @@ class MainActivity : AppCompatActivity() {
         
         webView = findViewById(R.id.webView)
         
-        // ✅ DESLIZAR PARA ACTUALIZAR — CONFIGURACIÓN
+        // ✅ DESLIZAR PARA ACTUALIZAR
         swipeRefresh = findViewById(R.id.swipeRefresh)
         swipeRefresh.setColorSchemeColors(
-            0xFFFFCC00.toInt(),  // Amarillo
-            0xFFFF6600.toInt(),  // Naranja
-            0xFF00CCFF.toInt()   // Celeste
+            0xFFFFCC00.toInt(),
+            0xFFFF6600.toInt(),
+            0xFF00CCFF.toInt()
         )
         swipeRefresh.setOnRefreshListener {
-            webView.clearCache(true)       // Limpia caché para traer lo nuevo
-            webView.reload()                // Recarga la página
-            swipeRefresh.isRefreshing = false // Quita el cargando
+            webView.clearCache(true)
+            webView.reload()
+            swipeRefresh.isRefreshing = false
         }
         
         configurarWebView()
+        
+        // ✅ INICIAR MANTENIMIENTO DE AUDIO
+        mantenerAudioActivo()
+        
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
             withContext(Dispatchers.Main) {
@@ -73,23 +103,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ✅ NO PAUSAR AUDIO AL PERDER FOCO — clave para que siga sonando
     override fun onPause() {
+        // NO llamar a webView.onPause() — eso corta el audio
         super.onPause()
-        //webView.evaluateJavascript("document.querySelectorAll('video, audio').forEach(el => el.pause());", null)//
-        //webView.onPause()//
+        // NO liberar wakeLock ni wifiLock aquí
     }
 
     override fun onResume() {
         super.onResume()
         webView.onResume()
+        // Asegurar que los bloqueos sigan activos
+        if (wakeLock?.isHeld != true) mantenerAudioActivo()
     }
 
     override fun onDestroy() {
-        //webView.evaluateJavascript("document.querySelectorAll('video, audio').forEach(el => { el.pause(); el.currentTime=0; });", null)//
+        super.onDestroy()
+        liberarBloqueos() // Solo liberar al cerrar la app
         webView.stopLoading()
         webView.removeAllViews()
         webView.destroy()
-        super.onDestroy()
     }
 
     private fun pedirPermisoCamara() {
@@ -151,10 +184,10 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             allowFileAccess = true
             allowContentAccess = true
-            mediaPlaybackRequiresUserGesture = false
+            mediaPlaybackRequiresUserGesture = false // ✅ Permitir auto-reproducción
             cacheMode = WebSettings.LOAD_NO_CACHE
             userAgentString = userAgentString + " CESARINMAX/1.0"
-            allowFileAccessFromFileURLs = true      // ✅ AGREGA ESTO
+            allowFileAccessFromFileURLs = true
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             setAllowUniversalAccessFromFileURLs(true)
         }
