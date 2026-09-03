@@ -2,7 +2,6 @@ package com.cesarinmax.app
 
 import android.app.AlertDialog
 import android.Manifest
-import android.content.Context  // ✅ AGREGA ESTA LÍNEA
 import android.content.pm.ActivityInfo
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -38,26 +37,18 @@ class MainActivity : AppCompatActivity() {
     private val MODO_PRUEBA_SIEMPRE = true
     private val REQUEST_CAMERA = 1001
     private var numeroAdminWhatsapp = "+51974634113"
-// ✅ NUEVO: Para mantener el audio activo con pantalla apagada
-private lateinit var wakeLock: android.os.PowerManager.WakeLock
 
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var originalSystemUiVisibility: Int = 0
     private var orientacionOriginal: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
-   override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    setContentView(R.layout.activity_main)
-    
-    // ✅ NUEVO: EVITAR QUE EL CELULAR DUERMA Y CORTE EL AUDIO
-    window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-    val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-    wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "cesarinmax:AudioWakeLock")
-    if (!wakeLock.isHeld) wakeLock.acquire(12*60*60*1000L /*12 horas*/)
-
-    webView = findViewById(R.id.webView)
-    // ... el resto sigue IGUAL
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        window.decorView.keepScreenOn = true
+        
+        webView = findViewById(R.id.webView)
         
         // ✅ DESLIZAR PARA ACTUALIZAR — CONFIGURACIÓN
         swipeRefresh = findViewById(R.id.swipeRefresh)
@@ -83,11 +74,10 @@ private lateinit var wakeLock: android.os.PowerManager.WakeLock
     }
 
     override fun onPause() {
-    super.onPause()
-    // ✅ QUITADA LA PAUSA DEL AUDIO — LA RADIO SIGUE SONANDO
-    // webView.evaluateJavascript("document.querySelectorAll('video, audio').forEach(el => el.pause());", null)
-    // webView.onPause()
-}
+        super.onPause()
+        //webView.evaluateJavascript("document.querySelectorAll('video, audio').forEach(el => el.pause());", null)//
+        //webView.onPause()//
+    }
 
     override fun onResume() {
         super.onResume()
@@ -95,15 +85,12 @@ private lateinit var wakeLock: android.os.PowerManager.WakeLock
     }
 
     override fun onDestroy() {
-    // ✅ LIBERAR EL BLOQUEO DE AUDIO
-    if (::wakeLock.isInitialized && wakeLock.isHeld) wakeLock.release()
-    
-    webView.evaluateJavascript("document.querySelectorAll('video, audio').forEach(el => { el.pause(); el.currentTime=0; });", null)
-    webView.stopLoading()
-    webView.removeAllViews()
-    webView.destroy()
-    super.onDestroy()
-}
+        //webView.evaluateJavascript("document.querySelectorAll('video, audio').forEach(el => { el.pause(); el.currentTime=0; });", null)//
+        webView.stopLoading()
+        webView.removeAllViews()
+        webView.destroy()
+        super.onDestroy()
+    }
 
     private fun pedirPermisoCamara() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
@@ -160,19 +147,17 @@ private lateinit var wakeLock: android.os.PowerManager.WakeLock
 
     private fun configurarWebView() {
         webView.settings.apply {
-    javaScriptEnabled = true
-    domStorageEnabled = true
-    allowFileAccess = true
-    allowContentAccess = true
-    mediaPlaybackRequiresUserGesture = false
-    // ✅ AGREGA ESTA LÍNEA ABAJO:
-    setRenderPriority(WebSettings.RenderPriority.HIGH)
-    cacheMode = WebSettings.LOAD_NO_CACHE
-    userAgentString = userAgentString + " CESARINMAX/1.0"
-    allowFileAccessFromFileURLs = true
-    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-    setAllowUniversalAccessFromFileURLs(true)
-}
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = true
+            allowContentAccess = true
+            mediaPlaybackRequiresUserGesture = false
+            cacheMode = WebSettings.LOAD_NO_CACHE
+            userAgentString = userAgentString + " CESARINMAX/1.0"
+            allowFileAccessFromFileURLs = true      // ✅ AGREGA ESTO
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            setAllowUniversalAccessFromFileURLs(true)
+        }
         webView.clearCache(true)
         webView.clearHistory()
         webView.addJavascriptInterface(WebAppInterface(this), "Android")
