@@ -242,5 +242,32 @@ window.addEventListener('message', (e) => {
   }
 });
 </script>
+    <!-- ✅ BLOQUEAR PAUSA AL SALIR DE LA APP -->
+<script>
+// Evitar que el navegador pause el audio al perder el foco
+Object.defineProperty(document, 'visibilityState', {
+    get: function() { return 'visible'; },
+    configurable: true
+});
+Object.defineProperty(document, 'hidden', {
+    get: function() { return false; },
+    configurable: true
+});
+
+// Reanudar automáticamente si se pausa
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden === false) return;
+    document.querySelectorAll('audio').forEach(function(audio) {
+        if (audio.paused && audio.src) {
+            audio.play().catch(function() {});
+        }
+    });
+});
+
+// Bloquear eventos de pausa
+window.addEventListener('blur', function(e) { e.stopImmediatePropagation(); }, true);
+document.addEventListener('suspend', function(e) { e.preventDefault(); }, true);
+document.addEventListener('pause', function(e) { e.preventDefault(); }, true);
+</script>
 </body>
 </html>
