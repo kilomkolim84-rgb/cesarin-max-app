@@ -1677,6 +1677,8 @@ style="display:none !important;
 position:absolute; left:-9999px; top:-9999px;">
 Tu navegador no admite audio.
 </audio>
+<!-- ✅ MÚSICA DE FONDO — SE DETIENE AL SALIR O CAMBIAR DE VENTANA -->
+<!-- ✅ MÚSICA DE FONDO — SE DETIENE AL SALIR / BLOQUEAR PANTALLA -->
 <script>
 const audioFondo = document.getElementById('musicaFondo');
 audioFondo.volume = 0.25;
@@ -1687,16 +1689,17 @@ const MUSICAS = ["1.mp3", "2.mp3", "3.mp3", "4.mp3", "5.mp3", "6.mp3", "7.mp3", 
 let yaListo = false;
 let ultimaCancion = -1;
 
-audioFondo.src = SALUDO;
-audioFondo.load();
-
+// ▶️ INICIAR MÚSICA AL TOCAR PANTALLA
 const empezar = () => {
   if (!yaListo) {
     yaListo = true;
+    audioFondo.src = SALUDO;
+    audioFondo.load();
     audioFondo.play().catch(err => console.log("Revisa nombre del archivo:", err));
   }
 };
 
+// 🎵 SIGUIENTE CANCIÓN AL TERMINAR
 audioFondo.addEventListener('ended', () => {
   let nueva;
   do {
@@ -1711,6 +1714,15 @@ audioFondo.addEventListener('ended', () => {
 document.addEventListener('click', empezar, { once: true, passive: true });
 document.addEventListener('touchstart', empezar, { once: true, passive: true });
 
+// ⛔ DETENER / REPRODUCIR — LLAMADAS DESDE ANDROID
+window.pausarMusicaFondo = () => {
+  audioFondo.pause();
+};
+window.reproducirMusicaFondo = () => {
+  if (yaListo) audioFondo.play().catch(() => {});
+};
+
+// ⛔ DETENER CON RADIO / TV / DEPORTES / PELÍCULAS
 const controlarFondo = () => {
   const peli = document.getElementById('ventanaPelicula');
   const estaPeli = peli && peli.style.display === 'block';
@@ -1728,12 +1740,12 @@ const controlarFondo = () => {
 
   if (estaPeli || estaVivo || estaDeportes || estaRadios || hayOtro) {
     audioFondo.pause();
-  } else if (yaListo) {
-    audioFondo.play().catch(() => {});
   }
 };
 
 new MutationObserver(controlarFondo).observe(document.body, { childList: true, subtree: true, attributes: true });
+</script>
+</script>
 </script>
 <div id="fb-root"></div>
 <script async defer crossorigin="anonymous" 
