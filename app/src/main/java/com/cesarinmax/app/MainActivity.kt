@@ -193,32 +193,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ AUDIO SIGUE EN SEGUNDO PLANO
+    // ✅ DETENER MÚSICA DE FONDO AL SALIR / BLOQUEAR PANTALLA — RADIO SIGUE SONANDO
     override fun onPause() {
         super.onPause()
-        webView.evaluateJavascript("""
-            Object.defineProperty(document, 'visibilityState', {
-                get: function() { return 'visible'; },
-                configurable: true
-            });
-            Object.defineProperty(document, 'hidden', {
-                get: function() { return false; },
-                configurable: true
-            });
-            document.querySelectorAll('audio, video').forEach(function(el) {
-                if (el.paused && el.src) el.play().catch(function(e) {});
-            });
-            window.addEventListener('blur', function(e) { e.stopImmediatePropagation(); }, true);
-            document.addEventListener('visibilitychange', function(e) { e.stopImmediatePropagation(); }, true);
-        """.trimIndent(), null)
+        
+        // ⛔ DETENER SOLO LA MÚSICA DE FONDO
+        webView.evaluateJavascript("javascript:pausarMusicaFondo();", null)
 
+        // 📻 LA RADIO SIGUE ACTIVA — NO TOCAR NADA DE AUDIO
         if (wakeLock?.isHeld != true) mantenerAudioActivo()
         mediaSession?.isActive = true
     }
 
+    // ✅ RETOMAR MÚSICA DE FONDO AL VOLVER A LA APP
     override fun onResume() {
         super.onResume()
         webView.onResume()
+        
+        // ▶️ REPRODUCIR MÚSICA DE FONDO SI ESTABA ACTIVA
+        webView.evaluateJavascript("javascript:reproducirMusicaFondo();", null)
+
+        // 📻 LA RADIO SIGUE FUNCIONANDO
         if (wakeLock?.isHeld != true) mantenerAudioActivo()
         mediaSession?.isActive = true
     }
