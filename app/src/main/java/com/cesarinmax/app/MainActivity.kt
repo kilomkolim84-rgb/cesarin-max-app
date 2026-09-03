@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
     
     // ✅ PONES AQUÍ LAS 2 MACs CUANDO LAS TENGAS
     private val macRouterPermitidas = setOf(
-        "AA:BB:CC:DD:EE:FF",  // ← MAC DEL HUAWEI — REEMPLAZA
+        "E4:26:D5:A1:55:04",  // ← MAC DEL HUAWEI — REEMPLAZA
         "11:22:33:44:55:66"   // ← MAC DEL RADIO 2.4/5GHz — REEMPLAZA
     )
     
