@@ -38,15 +38,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private var configGist: JSONObject? = null
     
-    // ========== 🔒 RED PERMITIDA — CESARINMAX + MACs ==========
+    // ========== 🔒 SOLO VERIFICAR NOMBRE DEL WiFi — SIN MAC ==========
     private val ssidEsperado = "CESARINMAX"
-    
-    // ✅ PONES AQUÍ LA MAC DEL WiFi CESARINMAX (BSSID)
-    private val macRouterPermitidas = setOf(
-        "AA:BB:CC:DD:EE:FF"   // ← MAC DEL PUNTO DE ACCESO WiFi — REEMPLAZA
-    )
-    
-    private val MODO_PRUEBA_SIEMPRE = true  // ⚠️ En false cuando ya pongas la MAC correcta
     // ===============================================================
     
     private val REQUEST_CAMERA = 1001
@@ -136,21 +129,14 @@ class MainActivity : AppCompatActivity() {
     }
     // ===============================================================
 
-    // ========== 🔒 VALIDACIÓN DE RED — SSID + MAC ==========
+    // ========== 🔒 VALIDACIÓN — SOLO NOMBRE DEL WiFi ==========
     private fun verificarRed(): Boolean {
-        if (MODO_PRUEBA_SIEMPRE) return true
-        
         val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         val info = wifi.connectionInfo
         val ssid = info.ssid.replace("\"", "").replace("<unknown ssid>", "")
-        val macConectada = info.bssid?.uppercase() ?: ""
         
-        val ssidCorrecto = ssid.equals(ssidEsperado, ignoreCase = true)
-        val macCorrecta = macConectada.isNotEmpty() && macRouterPermitidas.any { 
-            it.uppercase() == macConectada 
-        }
-        
-        return ssidCorrecto && macCorrecta
+        // ✅ SOLO VERIFICA QUE DIGA CESARINMAX — SIN MAC
+        return ssid.equals(ssidEsperado, ignoreCase = true)
     }
     // ===============================================================
 
@@ -190,7 +176,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ DETENER MÚSICA DE FONDO AL SALIR / BLOQUEAR PANTALLA — RADIO SIGUE
+    // ✅ DETENER MÚSICA DE FONDO AL SALIR — RADIO SIGUE IGUAL
     override fun onPause() {
         super.onPause()
         webView.evaluateJavascript("javascript:pausarMusicaFondo();", null)
@@ -237,7 +223,7 @@ class MainActivity : AppCompatActivity() {
     private fun mostrarMensajeRedNoAutorizada() {
         AlertDialog.Builder(this)
             .setTitle("⚠️ Red no autorizada")
-            .setMessage("Conéctate a la red WiFi \"$ssidEsperado\" para usar la Ruleta y Yape.\n\nLa radio y WhatsApp siguen funcionando.")
+            .setMessage("Conéctate a la red WiFi \"$ssidEsperado\" para usar Ruleta y Yape.\n\nLa radio y WhatsApp siguen funcionando.")
             .setCancelable(false)
             .setPositiveButton("✅ Entendido", null)
             .show()
