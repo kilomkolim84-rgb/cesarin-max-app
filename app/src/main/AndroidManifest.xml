@@ -13,12 +13,6 @@
     <!-- Para pedir permisos de cámara desde el WebView -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- ✅ NUEVO: Permisos para que la radio SIGA SONANDO con pantalla apagada -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
@@ -28,7 +22,6 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:label="CESARINMAX"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.Material3.DayNight.NoActionBar">
 
         <activity
@@ -41,19 +34,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- ✅ NUEVO: Servicio de Radio en segundo plano -->
-        <service
-            android:name=".RadioService"
-            android:foregroundServiceType="mediaPlayback"
-            android:exported="false" />
-
     </application>
 
     <!-- ✅ BLOQUE NUEVO: Permitir abrir WhatsApp desde la app -->
     <queries>
         <package android:name="com.whatsapp" />
         <package android:name="com.whatsapp.w4b" />
+        
     </queries>
 
 </manifest>
