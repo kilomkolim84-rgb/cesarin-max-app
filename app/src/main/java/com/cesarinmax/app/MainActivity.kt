@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private var configGist: JSONObject? = null
     
-    // ========== 🔒 SOLO VERIFICAR NOMBRE DEL WiFi — SIN MAC ==========
+    // ========== 🔒 SOLO NOMBRE DE RED — SIN MAC, SIN LÍOS ==========
     private val ssidEsperado = "CESARINMAX"
     // ===============================================================
     
@@ -129,13 +129,11 @@ class MainActivity : AppCompatActivity() {
     }
     // ===============================================================
 
-    // ========== 🔒 VALIDACIÓN — SOLO NOMBRE DEL WiFi ==========
+    // ========== 🔒 SOLO VERIFICA CESARINMAX — NO BLOQUEA NADA ==========
     private fun verificarRed(): Boolean {
         val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         val info = wifi.connectionInfo
-        val ssid = info.ssid.replace("\"", "").replace("<unknown ssid>", "")
-        
-        // ✅ SOLO VERIFICA QUE DIGA CESARINMAX — SIN MAC
+        val ssid = info.ssid.replace("\"", "").replace("<unknown ssid>", "").trim()
         return ssid.equals(ssidEsperado, ignoreCase = true)
     }
     // ===============================================================
@@ -170,13 +168,13 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
             withContext(Dispatchers.Main) {
-                if (verificarRed()) cargarPortal()
-                else mostrarMensajeRedNoAutorizada()
+                // ✅ CARGA SIEMPRE — SIN BLOQUEOS, SIN CARTEL QUE ESTORBE
+                cargarPortal()
             }
         }
     }
 
-    // ✅ DETENER MÚSICA DE FONDO AL SALIR — RADIO SIGUE IGUAL
+    // ✅ RADIO SIGUE SONANDO CON PANTALLA BLOQUEADA
     override fun onPause() {
         super.onPause()
         webView.evaluateJavascript("javascript:pausarMusicaFondo();", null)
@@ -218,15 +216,6 @@ class MainActivity : AppCompatActivity() {
             val ca = configGist?.getJSONObject("app")
             numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113")!!
         } catch (e: Exception) { e.printStackTrace() }
-    }
-
-    private fun mostrarMensajeRedNoAutorizada() {
-        AlertDialog.Builder(this)
-            .setTitle("⚠️ Red no autorizada")
-            .setMessage("Conéctate a la red WiFi \"$ssidEsperado\" para usar Ruleta y Yape.\n\nLa radio y WhatsApp siguen funcionando.")
-            .setCancelable(false)
-            .setPositiveButton("✅ Entendido", null)
-            .show()
     }
 
     private fun ponerPantallaCompletaHorizontal() {
@@ -382,15 +371,17 @@ Por favor coordina la entrega.""".trimIndent()
         webView.clearHistory()
         webView.loadUrl("file:///android_asset/index.html")
         
+        // ✅ SOLO AVISA AL HTML — NUNCA BLOQUEA LA APP
         val enRedPermitida = verificarRed()
         webView.evaluateJavascript("""
             window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: $enRedPermitida }, '*');
         """.trimIndent(), null)
         
+        // ✅ SOLO UN AVISO RÁPIDO — SIN CARTEL QUE ESTORBE
         if (enRedPermitida) {
             Toast.makeText(this, "✅ CESARINMAX — Ruleta y Yape activos", Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(this, "⚠️ Fuera de red — Ruleta y Yape desactivados", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "📡 Conectado — Ruleta/Yape solo en CESARINMAX", Toast.LENGTH_SHORT).show()
         }
     }
 
