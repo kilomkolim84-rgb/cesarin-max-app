@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
     private var originalSystemUiVisibility: Int = 0
     private var orientacionOriginal: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
-    // ========== RADIO: Audio en segundo plano — COMPLETO ==========
+    // ========== RADIO: Audio en segundo plano ==========
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private var audioManager: AudioManager? = null
@@ -65,7 +65,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun mantenerAudioActivo() {
-        // 🔒 Mantener CPU encendida
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
@@ -73,12 +72,10 @@ class MainActivity : AppCompatActivity() {
         )
         wakeLock?.acquire(12 * 60 * 60 * 1000L)
 
-        // 📶 Mantener WiFi encendido
         val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "cesarinmax:WifiLock")
         wifiLock?.acquire()
 
-        // 🔊 Pedir foco de audio — OBLIGATORIO
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
@@ -106,7 +103,6 @@ class MainActivity : AppCompatActivity() {
             audioFocusGranted = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         }
 
-        // 🎵 MediaSession — Android reconoce que es reproducción
         mediaSession = MediaSession(this, "CESARINMAX_RADIO").apply {
             setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
             setCallback(object : MediaSession.Callback() {})
@@ -145,6 +141,12 @@ class MainActivity : AppCompatActivity() {
             0xFFFF6600.toInt(),
             0xFF00CCFF.toInt()
         )
+
+        // ✅ SOLUCIÓN DEL SCROLL: Solo actualizar cuando estás en el TOPE
+        swipeRefresh.setOnChildScrollUpCallback { _, _ ->
+            webView.scrollY > 0 // Si NO estás arriba → NO permite refrescar, deja subir el scroll
+        }
+
         swipeRefresh.setOnRefreshListener {
             webView.clearCache(true)
             webView.reload()
@@ -163,15 +165,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ CLAVE: EVITAR QUE EL WEBVIEW PAUSE EL AUDIO AL SALIR DE LA APP
+    // ✅ Mantener audio al salir de la app
     override fun onPause() {
         super.onPause()
-
-        // ❌ NO llamar webView.onPause() — eso corta el audio
-
-        // 🔑 ENGAÑAR AL HTML PARA QUE NO DETENGA EL AUDIO
         webView.evaluateJavascript("""
-            // Bloquear detección de segundo plano
             Object.defineProperty(document, 'visibilityState', {
                 get: function() { return 'visible'; },
                 configurable: true
@@ -180,16 +177,13 @@ class MainActivity : AppCompatActivity() {
                 get: function() { return false; },
                 configurable: true
             });
-            // Reanudar audio si se pausó
             document.querySelectorAll('audio, video').forEach(function(el) {
                 if (el.paused && el.src) el.play().catch(function(e) {});
             });
-            // Bloquear eventos de pausa
             window.addEventListener('blur', function(e) { e.stopImmediatePropagation(); }, true);
             document.addEventListener('visibilitychange', function(e) { e.stopImmediatePropagation(); }, true);
         """.trimIndent(), null)
 
-        // Asegurar que todo siga activo
         if (wakeLock?.isHeld != true) mantenerAudioActivo()
         mediaSession?.isActive = true
     }
@@ -268,7 +262,7 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             allowFileAccess = true
             allowContentAccess = true
-            mediaPlaybackRequiresUserGesture = false // ✅ Auto-reproducción
+            mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_NO_CACHE
             userAgentString = userAgentString + " CESARINMAX/1.0"
             allowFileAccessFromFileURLs = true
