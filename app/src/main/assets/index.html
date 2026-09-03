@@ -2110,53 +2110,57 @@ function abrirPremios() {
   }
 }
 
-<!-- ✅ BLOQUEO RULETA + YAPE — DETECCIÓN DIRECTA DE RED -->
+<!-- ✅ BLOQUEO RULETA + YAPE — OCULTO POR DEFECTO, SOLO SE MUESTRA EN RED CESARINMAX -->
 <script>
-// 🔍 DETECCIÓN: ¿ESTÁS DENTRO DE LA RED LOCAL?
-let estadoRedPermitida = false;
-
-async function verificarRed() {
-  try {
-    // ⚡ Intenta conectar a tu MikroTik — si responde = ESTÁS ADENTRO
-    await fetch("http://172.16.1.1", { 
-      mode: "no-cors", 
-      cache: "no-store",
-      signal: AbortSignal.timeout(1500) // ⏱️ 1.5s — si no responde = ESTÁS AFUERA
-    });
-    estadoRedPermitida = true; // ✅ CONECTÓ → ADENTRO
-  } catch {
-    estadoRedPermitida = false; // ⛔ NO CONECTÓ → AFUERA
-  }
-  aplicarBloqueo();
-}
-
-// 🎯 OCULTA / MUESTRA LOS BOTONES
-function aplicarBloqueo() {
+// 🔒 POR DEFECTO: OCULTOS HASTA QUE SE CONFIRME LA RED
+document.addEventListener('DOMContentLoaded', function() {
   const ruleta = document.querySelector('[data-ventana="premios"]');
   const yape = document.getElementById('botonYape');
+  
+  // ⛔ DESDE EL PRINCIPIO: OCULTOS
+  if (ruleta) ruleta.style.display = 'none';
+  if (yape) yape.style.display = 'none';
+  
+  verificarRedLocal(ruleta, yape);
+});
 
-  if (estadoRedPermitida) {
-    // ✅ ADENTRO → MUESTRA TODO
+async function verificarRedLocal(ruleta, yape) {
+  let estaEnRed = false;
+  
+  try {
+    // ⚡ INTENTA LLEGAR A TU MIKROTIK — SI RESPONDE = ESTÁS ADENTRO
+    const controlador = new AbortController();
+    const tiempoFuera = setTimeout(() => controlador.abort(), 1200); // ⏱️ 1.2 segundos
+    
+    await fetch("http://172.16.1.1/", {
+      mode: "no-cors",
+      signal: controlador.signal,
+      cache: "no-store"
+    });
+    
+    clearTimeout(tiempoFuera);
+    estaEnRed = true; // ✅ SÍ CONECTÓ → ESTÁS ADENTRO
+    
+  } catch (err) {
+    estaEnRed = false; // ⛔ NO CONECTÓ → AFUERA (datos móviles u otra red)
+  }
+  
+  // 🎯 APLICA EL RESULTADO
+  if (estaEnRed) {
     if (ruleta) ruleta.style.display = 'flex';
     if (yape) yape.style.display = 'flex';
   } else {
-    // ⛔ AFUERA → OCULTA COMPLETAMENTE
     if (ruleta) ruleta.style.display = 'none';
     if (yape) yape.style.display = 'none';
   }
 }
 
-// 🚀 REVISAR AL CARGAR + CADA 5 SEGUNDOS
-verificarRed();
-setInterval(verificarRed, 5000);
-
-// 📡 TAMBIÉN ESCUCHA LA APP SI ENVÍA SEÑAL
-window.addEventListener('message', function(e) {
-  if (e.data?.tipo === 'estadoRed') {
-    estadoRedPermitida = e.data.enRedCesarinmax;
-    aplicarBloqueo();
-  }
-});
+// 🔄 REVISAR CADA 10 SEGUNDOS
+setInterval(() => {
+  const ruleta = document.querySelector('[data-ventana="premios"]');
+  const yape = document.getElementById('botonYape');
+  verificarRedLocal(ruleta, yape);
+}, 10000);
 </script>
 
 </body>
