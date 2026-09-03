@@ -2111,5 +2111,27 @@ function abrirPremios() {
 }
 
 </script>
+ <!-- ✅ BLOQUEO RULETA + YAPE — SOLO EN RED CESARINMAX -->
+<script>
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.tipo === 'estadoRed') {
+    // Selecciona los botones de Ruleta y Yape
+    const botonRuleta = document.querySelector('[data-ventana="premios"]');
+    const botonYape = document.getElementById('botonYape');
+    const estado = e.data.enRedCesarinmax;
+    
+    // ✅ Si está en red CESARINMAX → se muestran y funcionan
+    if (estado) {
+      if (botonRuleta) { botonRuleta.style.opacity = '1'; botonRuleta.style.pointerEvents = 'auto'; }
+      if (botonYape) { botonYape.style.opacity = '1'; botonYape.style.pointerEvents = 'auto'; }
+    } 
+    // ⛔ Si NO está en la red → se ocultan y no se pueden tocar
+    else {
+      if (botonRuleta) { botonRuleta.style.opacity = '0.3'; botonRuleta.style.pointerEvents = 'none'; }
+      if (botonYape) { botonYape.style.opacity = '0.3'; botonYape.style.pointerEvents = 'none'; }
+    }
+  }
+});
+</script>
 </body>
 </html>
