@@ -6,6 +6,11 @@ import android.content.pm.ActivityInfo
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
@@ -44,28 +49,86 @@ class MainActivity : AppCompatActivity() {
     private var originalSystemUiVisibility: Int = 0
     private var orientacionOriginal: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
-    // ========== RADIO: Mantener audio activo con pantalla apagada ==========
+    // ========== RADIO: Mantener audio con pantalla apagada — COMPLETO ==========
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var mediaSession: MediaSession? = null
+    private var audioFocusGranted = false
+
+    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        audioFocusGranted = when (focusChange) {
+            AudioManager.AUDIOFOCUS_GAIN -> true
+            else -> false
+        }
+    }
 
     private fun mantenerAudioActivo() {
-        // Mantener CPU encendida para que no se duerma la reproducción
+        // 🔒 Mantener CPU encendida
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
             "cesarinmax:radioWakeLock"
         )
-        wakeLock?.acquire(12 * 60 * 60 * 1000L) // 12 horas máximo
+        wakeLock?.acquire(12 * 60 * 60 * 1000L)
 
-        // Mantener WiFi encendido aunque se apague la pantalla
+        // 📶 Mantener WiFi encendido
         val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "cesarinmax:WifiLock")
         wifiLock?.acquire()
+
+        // 🔊 PEDIR FOCO DE AUDIO — OBLIGATORIO para que Android no corte
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                setAcceptsDelayedFocusGain(true)
+                setOnAudioFocusChangeListener(audioFocusChangeListener)
+                build()
+            }
+            audioFocusRequest?.let { req ->
+                val result = audioManager?.requestAudioFocus(req)
+                audioFocusGranted = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            val result = audioManager?.requestAudioFocus(
+                audioFocusChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            )
+            audioFocusGranted = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        }
+
+        // 🎵 MEDIA SESSION — Android reconoce que es reproducción de audio
+        mediaSession = MediaSession(this, "CESARINMAX_RADIO").apply {
+            setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
+            setCallback(object : MediaSession.Callback() {})
+            val state = PlaybackState.Builder()
+                .setState(PlaybackState.STATE_PLAYING, 0, 1.0f)
+                .build()
+            setPlaybackState(state)
+            isActive = true
+        }
     }
 
     private fun liberarBloqueos() {
         if (wakeLock?.isHeld == true) wakeLock?.release()
         if (wifiLock?.isHeld == true) wifiLock?.release()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { audioManager?.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager?.abandonAudioFocus(audioFocusChangeListener)
+        }
+        mediaSession?.isActive = false
+        mediaSession?.release()
     }
     // =======================================================================
 
@@ -76,7 +139,6 @@ class MainActivity : AppCompatActivity() {
         
         webView = findViewById(R.id.webView)
         
-        // ✅ DESLIZAR PARA ACTUALIZAR
         swipeRefresh = findViewById(R.id.swipeRefresh)
         swipeRefresh.setColorSchemeColors(
             0xFFFFCC00.toInt(),
@@ -90,8 +152,6 @@ class MainActivity : AppCompatActivity() {
         }
         
         configurarWebView()
-        
-        // ✅ INICIAR MANTENIMIENTO DE AUDIO
         mantenerAudioActivo()
         
         CoroutineScope(Dispatchers.IO).launch {
@@ -103,23 +163,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ NO PAUSAR AUDIO AL PERDER FOCO — clave para que siga sonando
+    // ✅ CLAVE: Fingir que la app sigue visible para que el HTML NO detenga el audio
     override fun onPause() {
-        // NO llamar a webView.onPause() — eso corta el audio
         super.onPause()
-        // NO liberar wakeLock ni wifiLock aquí
+        // ❌ NO llamar webView.onPause() — eso corta el audio
+        
+        // ✅ ENGAÑAR AL JAVASCRIPT para que NO detecte pausa por visibilidad
+        webView.evaluateJavascript("""
+            Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true, configurable: true });
+            Object.defineProperty(document, 'hidden', { value: false, writable: true, configurable: true });
+            window.dispatchEvent(new Event('visibilitychange'));
+            document.dispatchEvent(new Event('visibilitychange'));
+        """.trimIndent(), null)
     }
 
     override fun onResume() {
         super.onResume()
         webView.onResume()
-        // Asegurar que los bloqueos sigan activos
         if (wakeLock?.isHeld != true) mantenerAudioActivo()
+        mediaSession?.isActive = true
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        liberarBloqueos() // Solo liberar al cerrar la app
+        liberarBloqueos()
         webView.stopLoading()
         webView.removeAllViews()
         webView.destroy()
@@ -184,7 +251,7 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             allowFileAccess = true
             allowContentAccess = true
-            mediaPlaybackRequiresUserGesture = false // ✅ Permitir auto-reproducción
+            mediaPlaybackRequiresUserGesture = false // ✅ Auto-reproducción
             cacheMode = WebSettings.LOAD_NO_CACHE
             userAgentString = userAgentString + " CESARINMAX/1.0"
             allowFileAccessFromFileURLs = true
