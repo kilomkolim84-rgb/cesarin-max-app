@@ -395,7 +395,7 @@ if (enRedPermitida) {
         document.querySelectorAll('.ruleta, .yape, .boton-ruleta, .boton-yape').forEach(el => el.style.display = 'none');
     """.trimIndent(), null)
 }
-
+}
     override fun onBackPressed() {
         if (customView != null) { webView.webChromeClient?.onHideCustomView(); return }
         webView.evaluateJavascript("(function(){if(typeof cerrarVentanaDesdeApp==='function')return cerrarVentanaDesdeApp()?'cerrado':'no';return'no';})()") { res ->
