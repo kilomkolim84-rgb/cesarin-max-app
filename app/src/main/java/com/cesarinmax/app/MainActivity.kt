@@ -386,6 +386,16 @@ Por favor coordina la entrega.""".trimIndent()
     }
 
     private fun cargarPortal() {
+            // 📍 PEDIR PERMISO DE UBICACIÓN — OBLIGATORIO PARA LEER EL NOMBRE DEL WiFi
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                1002
+            )
+        }
         pedirPermisoCamara()
         webView.clearCache(true)
         webView.clearHistory()
