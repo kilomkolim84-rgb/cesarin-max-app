@@ -129,14 +129,26 @@ class MainActivity : AppCompatActivity() {
     }
     // ===============================================================
 
-    // ========== 🔒 SOLO VERIFICA CESARINMAX — NO BLOQUEA NADA ==========
+        // ========== 🔒 SOLO VERIFICA CESARINMAX — DETECTA DATOS MÓVILES ==========
     private fun verificarRed(): Boolean {
         val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+        
+        // 📶 Si el WiFi está APAGADO → estás con DATOS MÓVILES → NO permitido
+        if (!wifi.isWifiEnabled) return false
+
         val info = wifi.connectionInfo
-        val ssid = info.ssid.replace("\"", "").replace("<unknown ssid>", "").trim()
+        var ssid = info.ssid
+            .replace("\"", "")
+            .replace("<unknown ssid>", "")
+            .trim()
+
+        // ❌ Si no hay SSID → sin conexión WiFi o sin permiso de ubicación → NO permitido
+        if (ssid.isEmpty()) return false
+
+        // ✅ Solo si coincide EXACTAMENTE con CESARINMAX
         return ssid.equals(ssidEsperado, ignoreCase = true)
     }
-    // ===============================================================
+    // =========================================================================
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
