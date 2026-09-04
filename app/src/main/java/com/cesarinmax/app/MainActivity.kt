@@ -311,6 +311,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun crearTicketTiempo(minutos: Int, nombre: String, prefijo: String) {
+    if (!verificarRed()) {
+        Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
+        return
+    }
         val codigo = generarCodigo(prefijo)
         val fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         FirebaseDatabase.getInstance().reference.child("historial").child(codigo)
@@ -334,6 +338,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun enviarPorWhatsApp(nombre: String, tipo: String, prefijo: String) {
+    if (!verificarRed()) {
+        Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
+        return
+    }
         val codigo = generarCodigoCorto(prefijo)
         val tipoStr = if (tipo == "producto") "Producto" else if (tipo == "recarga") "Recarga / Diamantes" else "Premio"
         val msj = """🎉 ¡GANASTE EN LA RULETA CESARINMAX!
@@ -373,17 +381,20 @@ Por favor coordina la entrega.""".trimIndent()
         
         // ✅ SOLO AVISA AL HTML — NUNCA BLOQUEA LA APP
         val enRedPermitida = verificarRed()
-        webView.evaluateJavascript("""
-            window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: $enRedPermitida }, '*');
-        """.trimIndent(), null)
-        
-        // ✅ SOLO UN AVISO RÁPIDO — SIN CARTEL QUE ESTORBE
-        if (enRedPermitida) {
-            Toast.makeText(this, "✅ CESARINMAX — Ruleta y Yape activos", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "📡 Conectado — Ruleta/Yape solo en CESARINMAX", Toast.LENGTH_SHORT).show()
-        }
-    }
+webView.evaluateJavascript("""
+    window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: $enRedPermitida }, '*');
+""".trimIndent(), null)
+
+if (enRedPermitida) {
+    Toast.makeText(this, "✅ CESARINMAX — Ruleta y Yape activos", Toast.LENGTH_SHORT).show()
+} else {
+    Toast.makeText(this, "📡 Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
+    // 👇 OCULTA ruleta y yape cuando NO estás en la red
+    webView.evaluateJavascript("""
+        if(typeof ocultarPorRed === 'function') ocultarPorRed();
+        document.querySelectorAll('.ruleta, .yape, .boton-ruleta, .boton-yape').forEach(el => el.style.display = 'none');
+    """.trimIndent(), null)
+}
 
     override fun onBackPressed() {
         if (customView != null) { webView.webChromeClient?.onHideCustomView(); return }
