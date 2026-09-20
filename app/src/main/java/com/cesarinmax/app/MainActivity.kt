@@ -38,16 +38,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private var configGist: JSONObject? = null
     
-    // ========== 🔒 VERIFICACIÓN POR RANGO DE IP ==========
-    private val PERMITIDO_IP1 = 172
-    private val PERMITIDO_IP2 = 16
-    private val PERMITIDO_IP3 = 201
-    private val PERMITIDO_INICIO = 1
-    private val PERMITIDO_FIN = 254
+    // ========== 🔒 VERIFICACIÓN POR NOMBRE DE RED ==========
+    private val ssidEsperado = "CESARINMAX"
+    private val REQUEST_UBICACION = 1002
     // =====================================================
     
     private val REQUEST_CAMERA = 1001
-    private val REQUEST_UBICACION = 1002
     private var numeroAdminWhatsapp = "+51974634113"
 
     private var customView: View? = null
@@ -134,24 +130,35 @@ class MainActivity : AppCompatActivity() {
     }
     // ===============================================================
 
-    // ========== 🔒 VERIFICACIÓN POR RANGO DE IP ==========
+    // ========== 🔒 VERIFICACIÓN DE RED + PERMISO UBICACIÓN ==========
+    private fun pedirPermisoUbicacion() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                REQUEST_UBICACION
+            )
+        }
+    }
+
     private fun verificarRed(): Boolean {
         val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         
         if (!wifi.isWifiEnabled) return false
-        val ipInt = wifi.connectionInfo.ipAddress
-        if (ipInt == 0) return false
 
-        val a = ipInt and 0xFF
-        val b = (ipInt shr 8) and 0xFF
-        val c = (ipInt shr 16) and 0xFF
-        val d = (ipInt shr 24) and 0xFF
+        val info = wifi.connectionInfo
+        var ssid = info.ssid
+            .replace("\"", "")
+            .replace("<unknown ssid>", "")
+            .trim()
 
-        val enRango = (a == PERMITIDO_IP1 && b == PERMITIDO_IP2 && c == PERMITIDO_IP3 && d in PERMITIDO_INICIO..PERMITIDO_FIN)
-        android.util.Log.d("CESARINMAX", "IP: $a.$b.$c.$d | Permitido: $enRango")
-        return enRango
+        if (ssid.isEmpty()) return false
+
+        return ssid.equals(ssidEsperado, ignoreCase = true)
     }
-    // =====================================================
+    // ===============================================================
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,13 +166,16 @@ class MainActivity : AppCompatActivity() {
         window.decorView.keepScreenOn = true
         
         webView = findViewById(R.id.webView)
+        
         swipeRefresh = findViewById(R.id.swipeRefresh)
         swipeRefresh.setColorSchemeColors(
             0xFFFFCC00.toInt(),
             0xFFFF6600.toInt(),
             0xFF00CCFF.toInt()
         )
+
         swipeRefresh.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }
+
         swipeRefresh.setOnRefreshListener {
             webView.clearCache(true)
             webView.reload()
@@ -177,7 +187,9 @@ class MainActivity : AppCompatActivity() {
         
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
-            withContext(Dispatchers.Main) { cargarPortal() }
+            withContext(Dispatchers.Main) {
+                cargarPortal()
+            }
         }
     }
 
@@ -204,18 +216,6 @@ class MainActivity : AppCompatActivity() {
         webView.destroy()
     }
 
-    private fun pedirPermisoUbicacion() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                REQUEST_UBICACION
-            )
-        }
-    }
-
     private fun pedirPermisoCamara() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA)
@@ -223,8 +223,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CAMERA && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
-            Toast.makeText(this, "✅ Cámara habilitada", Toast.LENGTH_SHORT).show()
+        when (requestCode) {
+            REQUEST_CAMERA -> if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
+                Toast.makeText(this, "✅ Cámara habilitada", Toast.LENGTH_SHORT).show()
+            REQUEST_UBICACION -> if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
+                Toast.makeText(this, "✅ GPS activado", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun cargarConfigGist() {
@@ -330,7 +334,7 @@ class MainActivity : AppCompatActivity() {
 
     fun crearTicketTiempo(minutos: Int, nombre: String, prefijo: String) {
         if (!verificarRed()) {
-            Toast.makeText(this, "❌ ACCESO RESTRINGIDO — Conéctate al WiFi CESARINMAX DE PAOYHAN", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
             return
         }
         val codigo = generarCodigo(prefijo)
@@ -357,7 +361,7 @@ class MainActivity : AppCompatActivity() {
 
     fun enviarPorWhatsApp(nombre: String, tipo: String, prefijo: String) {
         if (!verificarRed()) {
-            Toast.makeText(this, "❌ ACCESO RESTRINGIDO — Conéctate al WiFi CESARINMAX DE PAOYHAN", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
             return
         }
         val codigo = generarCodigoCorto(prefijo)
@@ -392,120 +396,39 @@ Por favor coordina la entrega.""".trimIndent()
     }
 
     private fun cargarPortal() {
-        pedirPermisoUbicacion()
-        pedirPermisoCamara()
+        pedirPermisoUbicacion()  // ✅ Pide GPS para leer el WiFi
+        pedirPermisoCamara()      // ✅ Pide cámara para QR
         
-        val enRango = verificarRed()
-
-        if (!enRango) {
-            // ❌ FUERA DE RANGO — PANTALLA DE ACCESO RESTRINGIDO
-            Toast.makeText(this, "❌ ACCESO RESTRINGIDO — CONÉCTATE AL WIFI CESARINMAX DE PAOYHAN", Toast.LENGTH_LONG).show()
-            
-            webView.loadDataWithBaseURL(null, """
-                <html>
-                <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        * { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
-                        body {
-                            background: linear-gradient(135deg, #000000, #1a1a1a);
-                            min-height: 100vh;
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            justify-content: center;
-                            color: #ffffff;
-                            text-align: center;
-                            padding: 20px;
-                        }
-                        .icon { font-size: 48px; margin-bottom: 20px; }
-                        .titulo {
-                            font-size: 32px;
-                            font-weight: bold;
-                            color: #ffcc00;
-                            letter-spacing: 2px;
-                            margin-bottom: 50px;
-                        }
-                        .red {
-                            font-size: 24px;
-                            line-height: 1.8;
-                            margin-bottom: 50px;
-                        }
-                        .red .nombre {
-                            font-size: 42px;
-                            font-weight: 900;
-                            color: #ffcc00;
-                            display: block;
-                            margin: 10px 0;
-                        }
-                        .red .de {
-                            font-size: 28px;
-                            color: #eeeeee;
-                        }
-                        .disfruta {
-                            font-size: 22px;
-                            color: #ffcc00;
-                            margin-bottom: 60px;
-                        }
-                        .pasos {
-                            font-size: 14px;
-                            color: #999999;
-                            line-height: 2;
-                            border-top: 1px solid #333;
-                            padding-top: 30px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="icon">🔒</div>
-                    <div class="titulo">ACCESO RESTRINGIDO</div>
-                    
-                    <div class="red">
-                        CONÉCTATE AL WIFI
-                        <span class="nombre">CESARINMAX</span>
-                        <span class="de">DE PAOYHAN</span>
-                    </div>
-                    
-                    <div class="disfruta">¡DISFRUTA DE TODO! 🎉</div>
-                    
-                    <div class="pasos">
-                        CONÉCTATE A LA RED OFICIAL<br>
-                        VUELVE A ABRIR LA APLICACIÓN
-                    </div>
-                </body>
-                </html>
-            """.trimIndent(), "text/html", "UTF-8", null)
-            return
-        }
-
-        // ✅ DENTRO DEL RANGO — OCULTA PREMIOS Y RULETA
-        Toast.makeText(this, "✅ ACCESO PERMITIDO", Toast.LENGTH_SHORT).show()
         webView.clearCache(true)
         webView.clearHistory()
         webView.loadUrl("file:///android_asset/index.html")
-
-        // 🔥 OCULTAR "PREMIOS", RULETA Y TODO LO QUE NO QUIERES
+        
+        val enRedPermitida = verificarRed()
+        
         webView.evaluateJavascript("""
-            // OCULTAR POR CLASE: premios, premio, ruleta, etc
-            document.querySelectorAll('.premios, .premio, #premios, #premio, .ruleta, .roulette, .wheel, .juego, .sorteo, .boton-ruleta, .seccion-ruleta, #ruleta').forEach(el => {
-                el.style.display = 'none';
-                el.style.visibility = 'hidden';
-                el.style.opacity = '0';
-                el.style.height = '0';
-                el.style.overflow = 'hidden';
-            });
-            
-            // OCULTAR TODO LO QUE DIGA "PREMIOS" en texto
-            document.querySelectorAll('a, button, div, span, li').forEach(el => {
-                const texto = el.textContent.trim().toUpperCase();
-                if(texto === 'PREMIOS' || texto.includes('PREMIO')) {
+            window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: $enRedPermitida }, '*');
+        """.trimIndent(), null)
+
+        if (enRedPermitida) {
+            Toast.makeText(this, "✅ CESARINMAX — Todo activo", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "📡 Conéctate al WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
+            // 🔥 OCULTA PREMIOS, RULETA, TODO LO QUE NO QUIERES
+            webView.evaluateJavascript("""
+                document.querySelectorAll('.premios, .premio, #premios, #premio, .ruleta, .roulette, .wheel, .juego, .sorteo, .yape, .boton-ruleta, .boton-yape, .seccion-ruleta, #ruleta').forEach(el => {
                     el.style.display = 'none';
                     el.style.visibility = 'hidden';
-                }
-            });
-            
-            console.log('✅ PREMIOS OCULTADOS — Solo Noticias, Deportes, Radios');
-        """.trimIndent(), null)
+                    el.style.opacity = '0';
+                });
+                document.querySelectorAll('a, button, div, span, li').forEach(el => {
+                    const t = el.textContent.trim().toUpperCase();
+                    if(t === 'PREMIOS' || t.includes('PREMIO')) {
+                        el.style.display = 'none';
+                        el.style.visibility = 'hidden';
+                    }
+                });
+            """.trimIndent(), null)
+        }
     }
 
     override fun onBackPressed() {
