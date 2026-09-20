@@ -38,11 +38,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private var configGist: JSONObject? = null
     
-    // ========== 🔒 SOLO NOMBRE DE RED — SIN MAC, SIN LÍOS ==========
-    private val ssidEsperado = "CESARINMAX"
-    // ===============================================================
+    // ========== 🔒 VERIFICACIÓN POR RANGO DE IP ==========
+    // Rango permitido: 172.16.201.1 hasta 172.16.201.254
+    private val PERMITIDO_IP1 = 172
+    private val PERMITIDO_IP2 = 16
+    private val PERMITIDO_IP3 = 201
+    private val PERMITIDO_INICIO = 1
+    private val PERMITIDO_FIN = 254
+    // =====================================================
     
     private val REQUEST_CAMERA = 1001
+    private val REQUEST_UBICACION = 1002
     private var numeroAdminWhatsapp = "+51974634113"
 
     private var customView: View? = null
@@ -129,26 +135,30 @@ class MainActivity : AppCompatActivity() {
     }
     // ===============================================================
 
-        // ========== 🔒 SOLO VERIFICA CESARINMAX — DETECTA DATOS MÓVILES ==========
+    // ========== 🔒 VERIFICACIÓN POR RANGO DE IP ==========
     private fun verificarRed(): Boolean {
         val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         
-        // 📶 Si el WiFi está APAGADO → estás con DATOS MÓVILES → NO permitido
+        // 📶 Si el WiFi está APAGADO → datos móviles → NO permitido
         if (!wifi.isWifiEnabled) return false
 
-        val info = wifi.connectionInfo
-        var ssid = info.ssid
-            .replace("\"", "")
-            .replace("<unknown ssid>", "")
-            .trim()
+        val ipInt = wifi.connectionInfo.ipAddress
+        if (ipInt == 0) return false // sin IP asignada → no
 
-        // ❌ Si no hay SSID → sin conexión WiFi o sin permiso de ubicación → NO permitido
-        if (ssid.isEmpty()) return false
+        // Descomponer la IP: a.b.c.d
+        val a = ipInt and 0xFF
+        val b = (ipInt shr 8) and 0xFF
+        val c = (ipInt shr 16) and 0xFF
+        val d = (ipInt shr 24) and 0xFF
 
-        // ✅ Solo si coincide EXACTAMENTE con CESARINMAX
-        return ssid.equals(ssidEsperado, ignoreCase = true)
+        // Verificar: 172.16.201.X donde X entre 1 y 254
+        val enRango = (a == PERMITIDO_IP1 && b == PERMITIDO_IP2 && c == PERMITIDO_IP3 && d in PERMITIDO_INICIO..PERMITIDO_FIN)
+
+        android.util.Log.d("CESARINMAX", "IP: $a.$b.$c.$d | Permitido: $enRango")
+        
+        return enRango
     }
-    // =========================================================================
+    // =====================================================
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -180,7 +190,6 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
             withContext(Dispatchers.Main) {
-                // ✅ CARGA SIEMPRE — SIN BLOQUEOS, SIN CARTEL QUE ESTORBE
                 cargarPortal()
             }
         }
@@ -208,6 +217,18 @@ class MainActivity : AppCompatActivity() {
         webView.stopLoading()
         webView.removeAllViews()
         webView.destroy()
+    }
+
+    private fun pedirPermisoUbicacion() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                REQUEST_UBICACION
+            )
+        }
     }
 
     private fun pedirPermisoCamara() {
@@ -323,10 +344,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun crearTicketTiempo(minutos: Int, nombre: String, prefijo: String) {
-    if (!verificarRed()) {
-        Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-        return
-    }
+        if (!verificarRed()) {
+            Toast.makeText(this, "❌ NO AUTORIZADO — Conéctate a la red correcta", Toast.LENGTH_SHORT).show()
+            return
+        }
         val codigo = generarCodigo(prefijo)
         val fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         FirebaseDatabase.getInstance().reference.child("historial").child(codigo)
@@ -350,10 +371,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun enviarPorWhatsApp(nombre: String, tipo: String, prefijo: String) {
-    if (!verificarRed()) {
-        Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-        return
-    }
+        if (!verificarRed()) {
+            Toast.makeText(this, "❌ NO AUTORIZADO — Conéctate a la red correcta", Toast.LENGTH_SHORT).show()
+            return
+        }
         val codigo = generarCodigoCorto(prefijo)
         val tipoStr = if (tipo == "producto") "Producto" else if (tipo == "recarga") "Recarga / Diamantes" else "Premio"
         val msj = """🎉 ¡GANASTE EN LA RULETA CESARINMAX!
@@ -386,38 +407,39 @@ Por favor coordina la entrega.""".trimIndent()
     }
 
     private fun cargarPortal() {
-            // 📍 PEDIR PERMISO DE UBICACIÓN — OBLIGATORIO PARA LEER EL NOMBRE DEL WiFi
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                1002
-            )
-        }
+        // Pedir permiso de ubicación (obligatorio para leer la IP del WiFi)
+        pedirPermisoUbicacion()
         pedirPermisoCamara()
+        
+        // PRIMERO VERIFICAMOS LA IP
+        val enRango = verificarRed()
+
+        if (!enRango) {
+            // ❌ FUERA DE RANGO → NO CARGA NADA, MUESTRA BLOQUEO
+            Toast.makeText(this, "❌ ACCESO DENEGADO — IP no autorizada", Toast.LENGTH_LONG).show()
+            webView.loadDataWithBaseURL(null, """
+                <html>
+                <body style="background:#111;color:red;text-align:center;padding-top:120px;font-size:22px;font-family:sans-serif;">
+                    ❌ ACCESO DENEGADO<br><br>
+                    Conéctate a la red autorizada<br>
+                    Rango: 172.16.201.1 - 254
+                </body>
+                </html>
+            """.trimIndent(), "text/html", "UTF-8", null)
+            return // ⛔ DETIENE TODO AQUÍ
+        }
+
+        // ✅ DENTRO DEL RANGO → CARGA EL PORTAL NORMAL
+        Toast.makeText(this, "✅ ACCESO PERMITIDO", Toast.LENGTH_SHORT).show()
         webView.clearCache(true)
         webView.clearHistory()
         webView.loadUrl("file:///android_asset/index.html")
-        
-        // ✅ SOLO AVISA AL HTML — NUNCA BLOQUEA LA APP
-        val enRedPermitida = verificarRed()
-webView.evaluateJavascript("""
-    window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: $enRedPermitida }, '*');
-""".trimIndent(), null)
 
-if (enRedPermitida) {
-    Toast.makeText(this, "✅ CESARINMAX — Ruleta y Yape activos", Toast.LENGTH_SHORT).show()
-} else {
-    Toast.makeText(this, "📡 Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-    // 👇 OCULTA ruleta y yape cuando NO estás en la red
-    webView.evaluateJavascript("""
-        if(typeof ocultarPorRed === 'function') ocultarPorRed();
-        document.querySelectorAll('.ruleta, .yape, .boton-ruleta, .boton-yape').forEach(el => el.style.display = 'none');
-    """.trimIndent(), null)
-}
-}
+        webView.evaluateJavascript("""
+            window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: true }, '*');
+        """.trimIndent(), null)
+    }
+
     override fun onBackPressed() {
         if (customView != null) { webView.webChromeClient?.onHideCustomView(); return }
         webView.evaluateJavascript("(function(){if(typeof cerrarVentanaDesdeApp==='function')return cerrarVentanaDesdeApp()?'cerrado':'no';return'no';})()") { res ->
