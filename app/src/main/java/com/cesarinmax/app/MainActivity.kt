@@ -39,7 +39,6 @@ class MainActivity : AppCompatActivity() {
     private var configGist: JSONObject? = null
     
     // ========== 🔒 VERIFICACIÓN POR RANGO DE IP ==========
-    // Rango permitido: 172.16.201.1 hasta 172.16.201.254
     private val PERMITIDO_IP1 = 172
     private val PERMITIDO_IP2 = 16
     private val PERMITIDO_IP3 = 201
@@ -139,23 +138,17 @@ class MainActivity : AppCompatActivity() {
     private fun verificarRed(): Boolean {
         val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         
-        // 📶 Si el WiFi está APAGADO → datos móviles → NO permitido
         if (!wifi.isWifiEnabled) return false
-
         val ipInt = wifi.connectionInfo.ipAddress
-        if (ipInt == 0) return false // sin IP asignada → no
+        if (ipInt == 0) return false
 
-        // Descomponer la IP: a.b.c.d
         val a = ipInt and 0xFF
         val b = (ipInt shr 8) and 0xFF
         val c = (ipInt shr 16) and 0xFF
         val d = (ipInt shr 24) and 0xFF
 
-        // Verificar: 172.16.201.X donde X entre 1 y 254
         val enRango = (a == PERMITIDO_IP1 && b == PERMITIDO_IP2 && c == PERMITIDO_IP3 && d in PERMITIDO_INICIO..PERMITIDO_FIN)
-
         android.util.Log.d("CESARINMAX", "IP: $a.$b.$c.$d | Permitido: $enRango")
-        
         return enRango
     }
     // =====================================================
@@ -166,18 +159,13 @@ class MainActivity : AppCompatActivity() {
         window.decorView.keepScreenOn = true
         
         webView = findViewById(R.id.webView)
-        
         swipeRefresh = findViewById(R.id.swipeRefresh)
         swipeRefresh.setColorSchemeColors(
             0xFFFFCC00.toInt(),
             0xFFFF6600.toInt(),
             0xFF00CCFF.toInt()
         )
-
-        swipeRefresh.setOnChildScrollUpCallback { _, _ ->
-            webView.scrollY > 0
-        }
-
+        swipeRefresh.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }
         swipeRefresh.setOnRefreshListener {
             webView.clearCache(true)
             webView.reload()
@@ -189,13 +177,10 @@ class MainActivity : AppCompatActivity() {
         
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
-            withContext(Dispatchers.Main) {
-                cargarPortal()
-            }
+            withContext(Dispatchers.Main) { cargarPortal() }
         }
     }
 
-    // ✅ RADIO SIGUE SONANDO CON PANTALLA BLOQUEADA
     override fun onPause() {
         super.onPause()
         webView.evaluateJavascript("javascript:pausarMusicaFondo();", null)
@@ -345,7 +330,7 @@ class MainActivity : AppCompatActivity() {
 
     fun crearTicketTiempo(minutos: Int, nombre: String, prefijo: String) {
         if (!verificarRed()) {
-            Toast.makeText(this, "❌ NO AUTORIZADO — Conéctate a la red correcta", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "❌ ACCESO RESTRINGIDO — Conéctate al WiFi CESARINMAX DE PAOYHAN", Toast.LENGTH_SHORT).show()
             return
         }
         val codigo = generarCodigo(prefijo)
@@ -372,7 +357,7 @@ class MainActivity : AppCompatActivity() {
 
     fun enviarPorWhatsApp(nombre: String, tipo: String, prefijo: String) {
         if (!verificarRed()) {
-            Toast.makeText(this, "❌ NO AUTORIZADO — Conéctate a la red correcta", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "❌ ACCESO RESTRINGIDO — Conéctate al WiFi CESARINMAX DE PAOYHAN", Toast.LENGTH_SHORT).show()
             return
         }
         val codigo = generarCodigoCorto(prefijo)
@@ -407,29 +392,93 @@ Por favor coordina la entrega.""".trimIndent()
     }
 
     private fun cargarPortal() {
-        // Pedir permiso de ubicación (obligatorio para leer la IP del WiFi)
         pedirPermisoUbicacion()
         pedirPermisoCamara()
         
-        // PRIMERO VERIFICAMOS LA IP
         val enRango = verificarRed()
 
         if (!enRango) {
-            // ❌ FUERA DE RANGO → NO CARGA NADA, MUESTRA BLOQUEO
-            Toast.makeText(this, "❌ ACCESO DENEGADO — IP no autorizada", Toast.LENGTH_LONG).show()
+            // ❌ FUERA DE RANGO — IMAGEN DE FONDO + TEXTO
+            Toast.makeText(this, "❌ ACCESO RESTRINGIDO — CONÉCTATE AL WIFI CESARINMAX DE PAOYHAN", Toast.LENGTH_LONG).show()
+            
             webView.loadDataWithBaseURL(null, """
                 <html>
-                <body style="background:#111;color:red;text-align:center;padding-top:120px;font-size:22px;font-family:sans-serif;">
-                    ❌ ACCESO DENEGADO<br><br>
-                    Conéctate a la red autorizada<br>
-                    Rango: 172.16.201.1 - 254
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        * { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
+                        body {
+                            background: linear-gradient(135deg, #000000, #1a1a1a);
+                            min-height: 100vh;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            color: #ffffff;
+                            text-align: center;
+                            padding: 20px;
+                        }
+                        .icon { font-size: 48px; margin-bottom: 20px; }
+                        .titulo {
+                            font-size: 32px;
+                            font-weight: bold;
+                            color: #ffcc00;
+                            letter-spacing: 2px;
+                            margin-bottom: 50px;
+                        }
+                        .red {
+                            font-size: 24px;
+                            line-height: 1.8;
+                            margin-bottom: 50px;
+                        }
+                        .red .nombre {
+                            font-size: 42px;
+                            font-weight: 900;
+                            color: #ffcc00;
+                            display: block;
+                            margin: 10px 0;
+                        }
+                        .red .de {
+                            font-size: 28px;
+                            color: #eeeeee;
+                        }
+                        .disfruta {
+                            font-size: 22px;
+                            color: #ffcc00;
+                            margin-bottom: 60px;
+                        }
+                        .pasos {
+                            font-size: 14px;
+                            color: #999999;
+                            line-height: 2;
+                            border-top: 1px solid #333;
+                            padding-top: 30px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="icon">🔒</div>
+                    <div class="titulo">ACCESO RESTRINGIDO</div>
+                    
+                    <div class="red">
+                        CONÉCTATE AL WIFI
+                        <span class="nombre">CESARINMAX</span>
+                        <span class="de">DE PAOYHAN</span>
+                    </div>
+                    
+                    <div class="disfruta">¡DISFRUTA DE TODO! 🎉</div>
+                    
+                    <div class="pasos">
+                        CONÉCTATE A LA RED OFICIAL<br>
+                        VUELVE A ABRIR LA APLICACIÓN
+                    </div>
                 </body>
                 </html>
             """.trimIndent(), "text/html", "UTF-8", null)
-            return // ⛔ DETIENE TODO AQUÍ
+            return
         }
 
-        // ✅ DENTRO DEL RANGO → CARGA EL PORTAL NORMAL
+        // ✅ DENTRO DEL RANGO — CARGA EL PORTAL
         Toast.makeText(this, "✅ ACCESO PERMITIDO", Toast.LENGTH_SHORT).show()
         webView.clearCache(true)
         webView.clearHistory()
