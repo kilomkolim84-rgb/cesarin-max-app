@@ -38,10 +38,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private var configGist: JSONObject? = null
     
-    // ========== 🔒 VERIFICACIÓN POR NOMBRE DE RED ==========
+    // ========== 🔒 SOLO NOMBRE DE RED — SIN MAC, SIN LÍOS ==========
     private val ssidEsperado = "CESARINMAX"
-    private val REQUEST_UBICACION = 1002
-    // =====================================================
+    // ===============================================================
     
     private val REQUEST_CAMERA = 1001
     private var numeroAdminWhatsapp = "+51974634113"
@@ -130,35 +129,27 @@ class MainActivity : AppCompatActivity() {
     }
     // ===============================================================
 
-    // ========== 🔒 VERIFICACIÓN DE RED + PERMISO UBICACIÓN ==========
-    private fun pedirPermisoUbicacion() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                REQUEST_UBICACION
-            )
-        }
-    }
+// ========== 🔒 VERIFICACIÓN POR IP — SOLO 192.168.50.X ==========
+private fun verificarRed(): Boolean {
+    val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+    
+    if (!wifi.isWifiEnabled) return false
 
-    private fun verificarRed(): Boolean {
-        val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-        
-        if (!wifi.isWifiEnabled) return false
+    val ipInt = wifi.connectionInfo.ipAddress
+    if (ipInt == 0) return false
 
-        val info = wifi.connectionInfo
-        var ssid = info.ssid
-            .replace("\"", "")
-            .replace("<unknown ssid>", "")
-            .trim()
+    val ipStr = String.format(
+        Locale.getDefault(),
+        "%d.%d.%d.%d",
+        ipInt and 0xFF,
+        ipInt shr 8 and 0xFF,
+        ipInt shr 16 and 0xFF,
+        ipInt shr 24 and 0xFF
+    )
 
-        if (ssid.isEmpty()) return false
-
-        return ssid.equals(ssidEsperado, ignoreCase = true)
-    }
-    // ===============================================================
+    return ipStr.startsWith("192.168.50.")
+}
+================================
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -174,7 +165,9 @@ class MainActivity : AppCompatActivity() {
             0xFF00CCFF.toInt()
         )
 
-        swipeRefresh.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }
+        swipeRefresh.setOnChildScrollUpCallback { _, _ ->
+            webView.scrollY > 0
+        }
 
         swipeRefresh.setOnRefreshListener {
             webView.clearCache(true)
@@ -188,11 +181,13 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
             withContext(Dispatchers.Main) {
+                // ✅ CARGA SIEMPRE — SIN BLOQUEOS, SIN CARTEL QUE ESTORBE
                 cargarPortal()
             }
         }
     }
 
+    // ✅ RADIO SIGUE SONANDO CON PANTALLA BLOQUEADA
     override fun onPause() {
         super.onPause()
         webView.evaluateJavascript("javascript:pausarMusicaFondo();", null)
@@ -223,12 +218,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        when (requestCode) {
-            REQUEST_CAMERA -> if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
-                Toast.makeText(this, "✅ Cámara habilitada", Toast.LENGTH_SHORT).show()
-            REQUEST_UBICACION -> if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
-                Toast.makeText(this, "✅ GPS activado", Toast.LENGTH_SHORT).show()
-        }
+        if (requestCode == REQUEST_CAMERA && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
+            Toast.makeText(this, "✅ Cámara habilitada", Toast.LENGTH_SHORT).show()
     }
 
     private fun cargarConfigGist() {
@@ -333,10 +324,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun crearTicketTiempo(minutos: Int, nombre: String, prefijo: String) {
-        if (!verificarRed()) {
-            Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-            return
-        }
+    if (!verificarRed()) {
+        Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
+        return
+    }
         val codigo = generarCodigo(prefijo)
         val fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         FirebaseDatabase.getInstance().reference.child("historial").child(codigo)
@@ -360,10 +351,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun enviarPorWhatsApp(nombre: String, tipo: String, prefijo: String) {
-        if (!verificarRed()) {
-            Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-            return
-        }
+    if (!verificarRed()) {
+        Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
+        return
+    }
         val codigo = generarCodigoCorto(prefijo)
         val tipoStr = if (tipo == "producto") "Producto" else if (tipo == "recarga") "Recarga / Diamantes" else "Premio"
         val msj = """🎉 ¡GANASTE EN LA RULETA CESARINMAX!
@@ -396,41 +387,28 @@ Por favor coordina la entrega.""".trimIndent()
     }
 
     private fun cargarPortal() {
-        pedirPermisoUbicacion()  // ✅ Pide GPS para leer el WiFi
-        pedirPermisoCamara()      // ✅ Pide cámara para QR
-        
+        pedirPermisoCamara()
         webView.clearCache(true)
         webView.clearHistory()
         webView.loadUrl("file:///android_asset/index.html")
         
+        // ✅ SOLO AVISA AL HTML — NUNCA BLOQUEA LA APP
         val enRedPermitida = verificarRed()
-        
-        webView.evaluateJavascript("""
-            window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: $enRedPermitida }, '*');
-        """.trimIndent(), null)
+webView.evaluateJavascript("""
+    window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: $enRedPermitida }, '*');
+""".trimIndent(), null)
 
-        if (enRedPermitida) {
-            Toast.makeText(this, "✅ CESARINMAX — Todo activo", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "📡 Conéctate al WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-            // 🔥 OCULTA PREMIOS, RULETA, TODO LO QUE NO QUIERES
-            webView.evaluateJavascript("""
-                document.querySelectorAll('.premios, .premio, #premios, #premio, .ruleta, .roulette, .wheel, .juego, .sorteo, .yape, .boton-ruleta, .boton-yape, .seccion-ruleta, #ruleta').forEach(el => {
-                    el.style.display = 'none';
-                    el.style.visibility = 'hidden';
-                    el.style.opacity = '0';
-                });
-                document.querySelectorAll('a, button, div, span, li').forEach(el => {
-                    const t = el.textContent.trim().toUpperCase();
-                    if(t === 'PREMIOS' || t.includes('PREMIO')) {
-                        el.style.display = 'none';
-                        el.style.visibility = 'hidden';
-                    }
-                });
-            """.trimIndent(), null)
-        }
-    }
-
+if (enRedPermitida) {
+    Toast.makeText(this, "✅ CESARINMAX — Ruleta y Yape activos", Toast.LENGTH_SHORT).show()
+} else {
+    Toast.makeText(this, "📡 Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
+    // 👇 OCULTA ruleta y yape cuando NO estás en la red
+    webView.evaluateJavascript("""
+        if(typeof ocultarPorRed === 'function') ocultarPorRed();
+        document.querySelectorAll('.ruleta, .yape, .boton-ruleta, .boton-yape').forEach(el => el.style.display = 'none');
+    """.trimIndent(), null)
+}
+}
     override fun onBackPressed() {
         if (customView != null) { webView.webChromeClient?.onHideCustomView(); return }
         webView.evaluateJavascript("(function(){if(typeof cerrarVentanaDesdeApp==='function')return cerrarVentanaDesdeApp()?'cerrado':'no';return'no';})()") { res ->
