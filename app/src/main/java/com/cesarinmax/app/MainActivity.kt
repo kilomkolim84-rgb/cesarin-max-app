@@ -398,7 +398,7 @@ Por favor coordina la entrega.""".trimIndent()
         val enRango = verificarRed()
 
         if (!enRango) {
-            // ❌ FUERA DE RANGO — IMAGEN DE FONDO + TEXTO
+            // ❌ FUERA DE RANGO — PANTALLA DE ACCESO RESTRINGIDO
             Toast.makeText(this, "❌ ACCESO RESTRINGIDO — CONÉCTATE AL WIFI CESARINMAX DE PAOYHAN", Toast.LENGTH_LONG).show()
             
             webView.loadDataWithBaseURL(null, """
@@ -478,14 +478,24 @@ Por favor coordina la entrega.""".trimIndent()
             return
         }
 
-        // ✅ DENTRO DEL RANGO — CARGA EL PORTAL
+        // ✅ DENTRO DEL RANGO — CARGA PORTAL + OCULTA RULETA
         Toast.makeText(this, "✅ ACCESO PERMITIDO", Toast.LENGTH_SHORT).show()
         webView.clearCache(true)
         webView.clearHistory()
         webView.loadUrl("file:///android_asset/index.html")
 
+        // 🔥 OCULTAR RULETA — SOLO QUEDAN NOTICIAS, DEPORTES, RADIOS
         webView.evaluateJavascript("""
-            window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: true }, '*');
+            // OCULTAR TODO LO DE RULETA
+            document.querySelectorAll('.ruleta, .roulette, .wheel, .juego, .premio, .sorteo, .boton-ruleta, .seccion-ruleta, #ruleta').forEach(el => {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+                el.style.opacity = '0';
+                el.style.height = '0';
+                el.style.overflow = 'hidden';
+            });
+            
+            console.log('✅ RULETA OCULTA — Solo Noticias, Deportes y Radios visibles');
         """.trimIndent(), null)
     }
 
