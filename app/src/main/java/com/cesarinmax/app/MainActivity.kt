@@ -39,7 +39,6 @@ class MainActivity : AppCompatActivity() {
     private var configGist: JSONObject? = null
     
     // ========== 🔒 SOLO NOMBRE DE RED — SIN MAC, SIN LÍOS ==========
-    private val ssidEsperado = "CESARINMAX"
     // ===============================================================
     
     private val REQUEST_CAMERA = 1001
@@ -147,9 +146,9 @@ private fun verificarRed(): Boolean {
         ipInt shr 24 and 0xFF
     )
 
-    return ipStr.startsWith("192.168.50.")
+        return ipStr.startsWith("192.168.50.")
 }
-================================
+    // ================================================================
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -387,27 +386,62 @@ Por favor coordina la entrega.""".trimIndent()
     }
 
     private fun cargarPortal() {
-        pedirPermisoCamara()
-        webView.clearCache(true)
-        webView.clearHistory()
-        webView.loadUrl("file:///android_asset/index.html")
-        
-        // ✅ SOLO AVISA AL HTML — NUNCA BLOQUEA LA APP
-        val enRedPermitida = verificarRed()
-webView.evaluateJavascript("""
-    window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: $enRedPermitida }, '*');
-""".trimIndent(), null)
+    // ✅ CÁMARA INTACTA — NO TOCAR
+    pedirPermisoCamara()
+    
+    webView.clearCache(true)
+    webView.clearHistory()
+    webView.stopLoading()
 
-if (enRedPermitida) {
-    Toast.makeText(this, "✅ CESARINMAX — Ruleta y Yape activos", Toast.LENGTH_SHORT).show()
-} else {
-    Toast.makeText(this, "📡 Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-    // 👇 OCULTA ruleta y yape cuando NO estás en la red
+    val enRango = verificarRed()
+
+    if (!enRango) {
+        // ❌ FUERA DE IP → SOLO IMAGEN, NO CARGA EL PORTAL
+        webView.loadDataWithBaseURL(null, """
+            <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    * { margin:0; padding:0; font-family:Arial,sans-serif; }
+                    body {
+                        background:#000;
+                        min-height:100vh;
+                        display:flex;
+                        flex-direction:column;
+                        align-items:center;
+                        justify-content:center;
+                        text-align:center;
+                        color:#fff;
+                        padding:20px;
+                    }
+                    .logo { max-width:280px; width:80%; margin-bottom:30px; }
+                    .titulo { font-size:26px; color:#ffcc00; font-weight:bold; margin-bottom:20px; }
+                    .mensaje { font-size:18px; color:#ccc; line-height:1.8; }
+                </style>
+            </head>
+            <body>
+                <img src="file:///android_res/drawable/cesarinmax_preview.png" alt="CESARINMAX" class="logo">
+                <div class="titulo">ACCESO RESTRINGIDO</div>
+                <div class="mensaje">
+                    Conéctate al WiFi CESARINMAX<br>
+                    y vuelve a abrir la aplicación
+                </div>
+            </body>
+            </html>
+        """.trimIndent(), "text/html", "UTF-8", null)
+
+        Toast.makeText(this, "❌ Conéctate a la red CESARINMAX", Toast.LENGTH_LONG).show()
+        return
+    }
+
+    // ✅ DENTRO DE LA IP → TODO NORMAL
+    webView.loadUrl("file:///android_asset/index.html")
+    
     webView.evaluateJavascript("""
-        if(typeof ocultarPorRed === 'function') ocultarPorRed();
-        document.querySelectorAll('.ruleta, .yape, .boton-ruleta, .boton-yape').forEach(el => el.style.display = 'none');
+        window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: true }, '*');
     """.trimIndent(), null)
-}
+    
+    Toast.makeText(this, "✅ Conectado — Todo activo", Toast.LENGTH_SHORT).show()
 }
     override fun onBackPressed() {
         if (customView != null) { webView.webChromeClient?.onHideCustomView(); return }
