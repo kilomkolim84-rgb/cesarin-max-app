@@ -478,16 +478,16 @@ Por favor coordina la entrega.""".trimIndent()
             return
         }
 
-        // ✅ DENTRO DEL RANGO — CARGA PORTAL + OCULTA RULETA
+        // ✅ DENTRO DEL RANGO — OCULTA PREMIOS Y RULETA
         Toast.makeText(this, "✅ ACCESO PERMITIDO", Toast.LENGTH_SHORT).show()
         webView.clearCache(true)
         webView.clearHistory()
         webView.loadUrl("file:///android_asset/index.html")
 
-        // 🔥 OCULTAR RULETA — SOLO QUEDAN NOTICIAS, DEPORTES, RADIOS
+        // 🔥 OCULTAR "PREMIOS", RULETA Y TODO LO QUE NO QUIERES
         webView.evaluateJavascript("""
-            // OCULTAR TODO LO DE RULETA
-            document.querySelectorAll('.ruleta, .roulette, .wheel, .juego, .premio, .sorteo, .boton-ruleta, .seccion-ruleta, #ruleta').forEach(el => {
+            // OCULTAR POR CLASE: premios, premio, ruleta, etc
+            document.querySelectorAll('.premios, .premio, #premios, #premio, .ruleta, .roulette, .wheel, .juego, .sorteo, .boton-ruleta, .seccion-ruleta, #ruleta').forEach(el => {
                 el.style.display = 'none';
                 el.style.visibility = 'hidden';
                 el.style.opacity = '0';
@@ -495,7 +495,16 @@ Por favor coordina la entrega.""".trimIndent()
                 el.style.overflow = 'hidden';
             });
             
-            console.log('✅ RULETA OCULTA — Solo Noticias, Deportes y Radios visibles');
+            // OCULTAR TODO LO QUE DIGA "PREMIOS" en texto
+            document.querySelectorAll('a, button, div, span, li').forEach(el => {
+                const texto = el.textContent.trim().toUpperCase();
+                if(texto === 'PREMIOS' || texto.includes('PREMIO')) {
+                    el.style.display = 'none';
+                    el.style.visibility = 'hidden';
+                }
+            });
+            
+            console.log('✅ PREMIOS OCULTADOS — Solo Noticias, Deportes, Radios');
         """.trimIndent(), null)
     }
 
