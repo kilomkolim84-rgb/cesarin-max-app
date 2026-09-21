@@ -464,9 +464,9 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 
       <div class="tarjeta" data-ventana="deportes" onclick="reproducirAudioRuta('deportes.mp3');"><img src="portada_deportes.jpg" alt="Deportes"><div class="etiqueta">⚽ DEPORTES</div></div>
       
-  <div class="tarjeta" data-ventana="premios" onclick="reproducirAudioRuta('premios.mp3'); abrirPremios();">
-  <img src="portada_regalo.jpg" alt="Premios">
-  <div class="etiqueta">🎁 PREMIOS</div>
+  <div class="tarjeta" onclick="alert('🎁 MUY PRONTO — Premios y sorpresas para ti! 🎉'); reproducirAudioRuta('premios.mp3');">
+  <img src="portada_regalo.jpg" alt="Próximamente Premios">
+  <div class="etiqueta">🎁 MUY PRONTO</div>
 </div>
 </div>
 
@@ -604,7 +604,7 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 </div>
 
 <!-- VENTANA PREMIOS - RULETA -->
-<div class="ventana-contenido" id="ventana_premios">
+<div class="ventana-contenido" id="ventana_premios" style="display:none !important;">
   <div class="encabezado-ventana">
     <span class="cerrar" onclick="cerrarVentana()">✕ CERRAR</span>
     <span class="titulo-ventana">🎁 RULETA DE PREMIOS</span>
