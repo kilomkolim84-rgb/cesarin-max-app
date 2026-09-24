@@ -155,6 +155,8 @@ private fun verificarRed(): Boolean {
         setContentView(R.layout.activity_main)
         window.decorView.keepScreenOn = true
         
+        pedirPermisoCamara()
+
         webView = findViewById(R.id.webView)
         
         swipeRefresh = findViewById(R.id.swipeRefresh)
@@ -387,7 +389,6 @@ Por favor coordina la entrega.""".trimIndent()
 
     private fun cargarPortal() {
     // ✅ CÁMARA INTACTA — NO TOCAR
-    pedirPermisoCamara()
     
     webView.clearCache(true)
     webView.clearHistory()
@@ -435,7 +436,7 @@ Por favor coordina la entrega.""".trimIndent()
     }
 
     // ✅ DENTRO DE LA IP → TODO NORMAL
-    webView.loadUrl("file:///android_asset/index.html")
+    webView.loadUrl("https://172.16.1.1")
     
     webView.evaluateJavascript("""
         window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: true }, '*');
