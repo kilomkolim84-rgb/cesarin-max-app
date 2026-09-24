@@ -436,7 +436,7 @@ Por favor coordina la entrega.""".trimIndent()
     }
 
     // ✅ DENTRO DE LA IP → TODO NORMAL
-    webView.loadUrl("https://172.16.1.1")
+    webView.loadUrl("http://172.16.1.1")
     
     webView.evaluateJavascript("""
         window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: true }, '*');
