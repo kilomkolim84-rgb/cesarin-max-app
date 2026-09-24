@@ -314,6 +314,8 @@ private fun verificarRed(): Boolean {
 
     inner class WebAppInterface(private val ctx: MainActivity) {
         @JavascriptInterface
+    fun escanearQR() { ctx.escanearQR() }
+        @JavascriptInterface
         fun premioGanado(jsonPremio: String) {
             val p = JSONObject(jsonPremio)
             when (p.optString("tipo", "ninguno")) {
@@ -435,6 +437,8 @@ Por favor coordina la entrega.""".trimIndent()
         return
     }
 
+    webView.visibility = View.VISIBLE
+    
     // ✅ DENTRO DE LA IP → TODO NORMAL
     webView.loadUrl("file:///android_asset/index.html")
     
@@ -459,5 +463,18 @@ Por favor coordina la entrega.""".trimIndent()
             .setPositiveButton("✅ Sí") { _, _ -> finishAffinity() }
             .setNegativeButton("❌ No", null)
             .show()
+    }
+        // ✅ ESCANEO QR
+    @JavascriptInterface
+    fun escanearQR() {
+        runOnUiThread {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) 
+                == PackageManager.PERMISSION_GRANTED) {
+                webView.evaluateJavascript("javascript:iniciarEscanerQR()", null)
+            } else {
+                pedirPermisoCamara()
+                Toast.makeText(this@MainActivity, "⚠️ Concede permiso de cámara primero", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 }
