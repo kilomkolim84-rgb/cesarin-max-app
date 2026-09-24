@@ -146,7 +146,7 @@ private fun verificarRed(): Boolean {
         ipInt shr 24 and 0xFF
     )
 
-        return ipStr.startsWith("172.16.201.")
+        return ipStr.startsWith("172.16.1.")
 }
     // ================================================================
 
