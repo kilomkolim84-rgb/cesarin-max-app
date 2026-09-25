@@ -25,6 +25,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.firebase.database.FirebaseDatabase
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanIntentResult
+import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.net.URL
@@ -38,9 +41,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private var configGist: JSONObject? = null
     
-    // ========== 🔒 SOLO NOMBRE DE RED — SIN MAC, SIN LÍOS ==========
-    // ===============================================================
-    
     private val REQUEST_CAMERA = 1001
     private var numeroAdminWhatsapp = "+51974634113"
 
@@ -49,7 +49,6 @@ class MainActivity : AppCompatActivity() {
     private var originalSystemUiVisibility: Int = 0
     private var orientacionOriginal: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
-    // ========== 🎵 RADIO — Audio en segundo plano ==========
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private var audioManager: AudioManager? = null
@@ -126,29 +125,22 @@ class MainActivity : AppCompatActivity() {
         mediaSession?.isActive = false
         mediaSession?.release()
     }
-    // ===============================================================
 
-// ========== 🔒 VERIFICACIÓN POR IP — SOLO 192.168.50.X ==========
-private fun verificarRed(): Boolean {
-    val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-    
-    if (!wifi.isWifiEnabled) return false
-
-    val ipInt = wifi.connectionInfo.ipAddress
-    if (ipInt == 0) return false
-
-    val ipStr = String.format(
-        Locale.getDefault(),
-        "%d.%d.%d.%d",
-        ipInt and 0xFF,
-        ipInt shr 8 and 0xFF,
-        ipInt shr 16 and 0xFF,
-        ipInt shr 24 and 0xFF
-    )
-
+    private fun verificarRed(): Boolean {
+        val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+        if (!wifi.isWifiEnabled) return false
+        val ipInt = wifi.connectionInfo.ipAddress
+        if (ipInt == 0) return false
+        val ipStr = String.format(
+            Locale.getDefault(),
+            "%d.%d.%d.%d",
+            ipInt and 0xFF,
+            ipInt shr 8 and 0xFF,
+            ipInt shr 16 and 0xFF,
+            ipInt shr 24 and 0xFF
+        )
         return ipStr.startsWith("172.16.1.")
-}
-    // ================================================================
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -158,18 +150,13 @@ private fun verificarRed(): Boolean {
         pedirPermisoCamara()
 
         webView = findViewById(R.id.webView)
-        
         swipeRefresh = findViewById(R.id.swipeRefresh)
         swipeRefresh.setColorSchemeColors(
             0xFFFFCC00.toInt(),
             0xFFFF6600.toInt(),
             0xFF00CCFF.toInt()
         )
-
-        swipeRefresh.setOnChildScrollUpCallback { _, _ ->
-            webView.scrollY > 0
-        }
-
+        swipeRefresh.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }
         swipeRefresh.setOnRefreshListener {
             webView.clearCache(true)
             webView.reload()
@@ -181,14 +168,10 @@ private fun verificarRed(): Boolean {
         
         CoroutineScope(Dispatchers.IO).launch {
             cargarConfigGist()
-            withContext(Dispatchers.Main) {
-                // ✅ CARGA SIEMPRE — SIN BLOQUEOS, SIN CARTEL QUE ESTORBE
-                cargarPortal()
-            }
+            withContext(Dispatchers.Main) { cargarPortal() }
         }
     }
 
-    // ✅ RADIO SIGUE SONANDO CON PANTALLA BLOQUEADA
     override fun onPause() {
         super.onPause()
         webView.evaluateJavascript("javascript:pausarMusicaFondo();", null)
@@ -213,14 +196,53 @@ private fun verificarRed(): Boolean {
     }
 
     private fun pedirPermisoCamara() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) 
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                REQUEST_CAMERA
+            )
+        }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CAMERA && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
-            Toast.makeText(this, "✅ Cámara habilitada", Toast.LENGTH_SHORT).show()
+        if (requestCode == REQUEST_CAMERA) {
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "✅ Cámara habilitada", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "❌ Permiso de cámara denegado", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // ✅ ESCÁNER QR DIRECTO — SIN BUCLE
+    private val escanerQR = registerForActivityResult(ScanContract()) { resultado ->
+        if (resultado.resultCode == RESULT_OK) {
+            val codigo = resultado.contents
+            webView.evaluateJavascript("javascript:document.getElementById('codigo').value='$codigo'; verificarCodigo();", null)
+        }
+    }
+
+    private fun iniciarEscaneoQR() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) 
+            != PackageManager.PERMISSION_GRANTED) {
+            pedirPermisoCamara()
+            Toast.makeText(this, "⚠️ Concede permiso de cámara primero", Toast.LENGTH_LONG).show()
+            return
+        }
+        val opciones = ScanOptions()
+            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            .setPrompt("📷 Acerque el código QR")
+            .setCameraId(0)
+            .setBeepEnabled(true)
+            .setOrientationLocked(false)
+        escanerQR.launch(opciones)
     }
 
     private fun cargarConfigGist() {
@@ -314,7 +336,9 @@ private fun verificarRed(): Boolean {
 
     inner class WebAppInterface(private val ctx: MainActivity) {
         @JavascriptInterface
-    fun escanearQR() { ctx.escanearQR() }
+        fun escanearQR() {
+            ctx.iniciarEscaneoQR() // ✅ DIRECTO — SIN BUCLE
+        }
         @JavascriptInterface
         fun premioGanado(jsonPremio: String) {
             val p = JSONObject(jsonPremio)
@@ -327,10 +351,10 @@ private fun verificarRed(): Boolean {
     }
 
     fun crearTicketTiempo(minutos: Int, nombre: String, prefijo: String) {
-    if (!verificarRed()) {
-        Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-        return
-    }
+        if (!verificarRed()) {
+            Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
+            return
+        }
         val codigo = generarCodigo(prefijo)
         val fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         FirebaseDatabase.getInstance().reference.child("historial").child(codigo)
@@ -354,10 +378,10 @@ private fun verificarRed(): Boolean {
     }
 
     fun enviarPorWhatsApp(nombre: String, tipo: String, prefijo: String) {
-    if (!verificarRed()) {
-        Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-        return
-    }
+        if (!verificarRed()) {
+            Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
+            return
+        }
         val codigo = generarCodigoCorto(prefijo)
         val tipoStr = if (tipo == "producto") "Producto" else if (tipo == "recarga") "Recarga / Diamantes" else "Premio"
         val msj = """🎉 ¡GANASTE EN LA RULETA CESARINMAX!
@@ -390,69 +414,69 @@ Por favor coordina la entrega.""".trimIndent()
     }
 
     private fun cargarPortal() {
-    // ✅ CÁMARA INTACTA — NO TOCAR
-    
-    webView.clearCache(true)
-    webView.clearHistory()
-    webView.stopLoading()
+        webView.clearCache(true)
+        webView.clearHistory()
+        webView.stopLoading()
 
-    val enRango = verificarRed()
+        val enRango = verificarRed()
 
-    if (!enRango) {
-        // ❌ FUERA DE IP → SOLO IMAGEN, NO CARGA EL PORTAL
-        webView.loadDataWithBaseURL(null, """
-            <html>
-            <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    * { margin:0; padding:0; font-family:Arial,sans-serif; }
-                    body {
-                        background:#000;
-                        min-height:100vh;
-                        display:flex;
-                        flex-direction:column;
-                        align-items:center;
-                        justify-content:center;
-                        text-align:center;
-                        color:#fff;
-                        padding:20px;
-                    }
-                    .logo { max-width:280px; width:80%; margin-bottom:30px; }
-                    .titulo { font-size:26px; color:#ffcc00; font-weight:bold; margin-bottom:20px; }
-                    .mensaje { font-size:18px; color:#ccc; line-height:1.8; }
-                </style>
-            </head>
-            <body>
-                <img src="file:///android_res/drawable/cesarinmax_preview.png" alt="CESARINMAX" class="logo">
-                <div class="titulo">ACCESO RESTRINGIDO</div>
-                <div class="mensaje">
-                    Conéctate al WiFi CESARINMAX<br>
-                    y vuelve a abrir la aplicación
-                </div>
-            </body>
-            </html>
-        """.trimIndent(), "text/html", "UTF-8", null)
+        if (!enRango) {
+            webView.loadDataWithBaseURL(null, """
+                <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        * { margin:0; padding:0; font-family:Arial,sans-serif; }
+                        body {
+                            background:#000;
+                            min-height:100vh;
+                            display:flex;
+                            flex-direction:column;
+                            align-items:center;
+                            justify-content:center;
+                            text-align:center;
+                            color:#fff;
+                            padding:20px;
+                        }
+                        .logo { max-width:280px; width:80%; margin-bottom:30px; }
+                        .titulo { font-size:26px; color:#ffcc00; font-weight:bold; margin-bottom:20px; }
+                        .mensaje { font-size:18px; color:#ccc; line-height:1.8; }
+                    </style>
+                </head>
+                <body>
+                    <img src="file:///android_res/drawable/cesarinmax_preview.png" alt="CESARINMAX" class="logo">
+                    <div class="titulo">ACCESO RESTRINGIDO</div>
+                    <div class="mensaje">
+                        Conéctate al WiFi CESARINMAX<br>
+                        y vuelve a abrir la aplicación
+                    </div>
+                </body>
+                </html>
+            """.trimIndent(), "text/html", "UTF-8", null)
 
-        Toast.makeText(this, "❌ Conéctate a la red CESARINMAX", Toast.LENGTH_LONG).show()
-        return
+            Toast.makeText(this, "❌ Conéctate a la red CESARINMAX", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        webView.visibility = View.VISIBLE
+        webView.loadUrl("file:///android_asset/index.html")
+        
+        webView.evaluateJavascript("""
+            window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: true }, '*');
+        """.trimIndent(), null)
+        
+        Toast.makeText(this, "✅ Conectado — Todo activo", Toast.LENGTH_SHORT).show()
     }
 
-    webView.visibility = View.VISIBLE
-    
-    // ✅ DENTRO DE LA IP → TODO NORMAL
-    webView.loadUrl("file:///android_asset/index.html")
-    
-    webView.evaluateJavascript("""
-        window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: true }, '*');
-    """.trimIndent(), null)
-    
-    Toast.makeText(this, "✅ Conectado — Todo activo", Toast.LENGTH_SHORT).show()
-}
     override fun onBackPressed() {
         if (customView != null) { webView.webChromeClient?.onHideCustomView(); return }
         webView.evaluateJavascript("(function(){if(typeof cerrarVentanaDesdeApp==='function')return cerrarVentanaDesdeApp()?'cerrado':'no';return'no';})()") { res ->
             val r = res.removeSurrounding("\"")
-            when { r == "cerrado" -> {}; webView.canGoBack() -> webView.goBack(); else -> salir() }
+            when {
+                r == "cerrado" -> {}
+                webView.canGoBack() -> webView.goBack()
+                else -> salir()
+            }
         }
     }
 
@@ -463,18 +487,5 @@ Por favor coordina la entrega.""".trimIndent()
             .setPositiveButton("✅ Sí") { _, _ -> finishAffinity() }
             .setNegativeButton("❌ No", null)
             .show()
-    }
-        // ✅ ESCANEO QR
-    @JavascriptInterface
-    fun escanearQR() {
-        runOnUiThread {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) 
-                == PackageManager.PERMISSION_GRANTED) {
-                webView.evaluateJavascript("javascript:iniciarEscanerQR()", null)
-            } else {
-                pedirPermisoCamara()
-                Toast.makeText(this@MainActivity, "⚠️ Concede permiso de cámara primero", Toast.LENGTH_LONG).show()
-            }
-        }
     }
 }
