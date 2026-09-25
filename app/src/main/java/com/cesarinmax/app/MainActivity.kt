@@ -223,7 +223,7 @@ class MainActivity : AppCompatActivity() {
 
     // ✅ ESCÁNER QR DIRECTO — SIN BUCLE
     private val escanerQR = registerForActivityResult(com.journeyapps.barcodescanner.ScanContract()) { resultado ->
-    if (resultado?.resultCode == RESULT_OK) {
+    if (resultado != null && !resultado.contents.isNullOrEmpty()) {
         val codigo = resultado.contents
         webView.evaluateJavascript("javascript:document.getElementById('codigo').value='$codigo'; verificarCodigo();", null)
     }
