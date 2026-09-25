@@ -143,34 +143,37 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        window.decorView.keepScreenOn = true
-        
-        pedirPermisoCamara()
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_main)
+    window.decorView.keepScreenOn = true
+    
+    pedirPermisoCamara()
 
-        webView = findViewById(R.id.webView)
-        swipeRefresh = findViewById(R.id.swipeRefresh)
-        swipeRefresh.setColorSchemeColors(
-            0xFFFFCC00.toInt(),
-            0xFFFF6600.toInt(),
-            0xFF00CCFF.toInt()
-        )
-        swipeRefresh.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }
-        swipeRefresh.setOnRefreshListener {
-            webView.clearCache(true)
-            webView.reload()
-            swipeRefresh.isRefreshing = false
-        }
-        
-        configurarWebView()
-        mantenerAudioActivo()
-        
-        CoroutineScope(Dispatchers.IO).launch {
-            cargarConfigGist()
-            withContext(Dispatchers.Main) { cargarPortal() }
-        }
+    webView = findViewById(R.id.webView)
+    swipeRefresh = findViewById(R.id.swipeRefresh)
+    swipeRefresh.setColorSchemeColors(
+        0xFFFFCC00.toInt(),
+        0xFFFF6600.toInt(),
+        0xFF00CCFF.toInt()
+    )
+    swipeRefresh.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }
+    swipeRefresh.setOnRefreshListener {
+        webView.clearCache(true)
+        webView.reload()
+        swipeRefresh.isRefreshing = false
     }
+    
+    configurarWebView()
+    mantenerAudioActivo()
+    
+    // ✅ CARGA EL PORTAL DE UNA — SIN ESPERAR NADA
+    cargarPortal()
+    
+    // ✅ Gist en SEGUNDO PLANO — NO BLOQUEA NADA
+    CoroutineScope(Dispatchers.IO).launch {
+        cargarConfigGist()
+    }
+}
 
     override fun onPause() {
         super.onPause()
@@ -246,13 +249,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun cargarConfigGist() {
-        try {
-            val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
-            configGist = JSONObject(URL(urlGist).readText())
-            val ca = configGist?.getJSONObject("app")
-            numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113")!!
-        } catch (e: Exception) { e.printStackTrace() }
+    try {
+        val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
+        configGist = JSONObject(URL(urlGist).readText())
+        val ca = configGist?.getJSONObject("app")
+        // ✅ Quita el !! para que NO crashee si no hay internet
+        numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113") ?: "+51974634113"
+    } catch (e: Exception) {
+        e.printStackTrace()
+        // ✅ Si falla, usa el número por defecto
+        numeroAdminWhatsapp = "+51974634113"
     }
+}
 
     private fun ponerPantallaCompletaHorizontal() {
         orientacionOriginal = requestedOrientation
