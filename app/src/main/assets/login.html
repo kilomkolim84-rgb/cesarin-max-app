@@ -380,11 +380,11 @@ input:focus { outline:none; border-color:#ff4444; box-shadow:0 0 12px rgba(255,0
 </style>
 
 
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+<script src="zxing.min.js"></script>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="firebase-app-compat.js"></script>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script src="firebase-database-compat.js"></script>
 
 
 
@@ -410,7 +410,9 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 
   <div style="text-align:center; margin:25px 0;">
 
-    <button id="btnEscanear" style="background:#1A73E8; color:white; border:none; padding:16px 35px; font-size:20px; font-weight:bold; border-radius:14px; cursor:pointer; display:inline-flex; align-items:center; gap:12px;">
+    <button id="btnEscanear" 
+    onclick="iniciarEscanerQR(); return false;"
+style="background:#1A73E8; color:white; border:none; padding:16px 35px; font-size:20px; font-weight:bold; border-radius:14px; cursor:pointer; display:inline-flex; align-items:center; gap:12px;">
 
       <span style="font-size:26px;">📷</span> ESCANEAR QR
 
@@ -464,9 +466,9 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 
       <div class="tarjeta" data-ventana="deportes" onclick="reproducirAudioRuta('deportes.mp3');"><img src="portada_deportes.jpg" alt="Deportes"><div class="etiqueta">⚽ DEPORTES</div></div>
       
-  <div class="tarjeta" data-ventana="premios" onclick="reproducirAudioRuta('premios.mp3'); abrirPremios();">
-  <img src="portada_regalo.jpg" alt="Premios">
-  <div class="etiqueta">🎁 PREMIOS</div>
+  <div class="tarjeta" onclick="alert('🎁 MUY PRONTO — Premios y sorpresas para ti! 🎉'); reproducirAudioRuta('premios.mp3');">
+  <img src="portada_regalo.jpg" alt="Próximamente Premios">
+  <div class="etiqueta">🎁 MUY PRONTO</div>
 </div>
 </div>
 
@@ -604,7 +606,7 @@ window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"
 </div>
 
 <!-- VENTANA PREMIOS - RULETA -->
-<div class="ventana-contenido" id="ventana_premios">
+<div class="ventana-contenido" id="ventana_premios" style="display:none !important;">
   <div class="encabezado-ventana">
     <span class="cerrar" onclick="cerrarVentana()">✕ CERRAR</span>
     <span class="titulo-ventana">🎁 RULETA DE PREMIOS</span>
@@ -1677,6 +1679,8 @@ style="display:none !important;
 position:absolute; left:-9999px; top:-9999px;">
 Tu navegador no admite audio.
 </audio>
+<!-- ✅ MÚSICA DE FONDO — SE DETIENE AL SALIR O CAMBIAR DE VENTANA -->
+<!-- ✅ MÚSICA DE FONDO — SE DETIENE AL SALIR / BLOQUEAR PANTALLA -->
 <script>
 const audioFondo = document.getElementById('musicaFondo');
 audioFondo.volume = 0.25;
@@ -1687,16 +1691,17 @@ const MUSICAS = ["1.mp3", "2.mp3", "3.mp3", "4.mp3", "5.mp3", "6.mp3", "7.mp3", 
 let yaListo = false;
 let ultimaCancion = -1;
 
-audioFondo.src = SALUDO;
-audioFondo.load();
-
+// ▶️ INICIAR MÚSICA AL TOCAR PANTALLA
 const empezar = () => {
   if (!yaListo) {
     yaListo = true;
+    audioFondo.src = SALUDO;
+    audioFondo.load();
     audioFondo.play().catch(err => console.log("Revisa nombre del archivo:", err));
   }
 };
 
+// 🎵 SIGUIENTE CANCIÓN AL TERMINAR
 audioFondo.addEventListener('ended', () => {
   let nueva;
   do {
@@ -1711,6 +1716,15 @@ audioFondo.addEventListener('ended', () => {
 document.addEventListener('click', empezar, { once: true, passive: true });
 document.addEventListener('touchstart', empezar, { once: true, passive: true });
 
+// ⛔ DETENER / REPRODUCIR — LLAMADAS DESDE ANDROID
+window.pausarMusicaFondo = () => {
+  audioFondo.pause();
+};
+window.reproducirMusicaFondo = () => {
+  if (yaListo) audioFondo.play().catch(() => {});
+};
+
+// ⛔ DETENER CON RADIO / TV / DEPORTES / PELÍCULAS
 const controlarFondo = () => {
   const peli = document.getElementById('ventanaPelicula');
   const estaPeli = peli && peli.style.display === 'block';
@@ -1728,12 +1742,12 @@ const controlarFondo = () => {
 
   if (estaPeli || estaVivo || estaDeportes || estaRadios || hayOtro) {
     audioFondo.pause();
-  } else if (yaListo) {
-    audioFondo.play().catch(() => {});
   }
 };
 
 new MutationObserver(controlarFondo).observe(document.body, { childList: true, subtree: true, attributes: true });
+</script>
+</script>
 </script>
 <div id="fb-root"></div>
 <script async defer crossorigin="anonymous" 
@@ -2110,6 +2124,55 @@ function abrirPremios() {
   }
 }
 
+<!-- ✅ SOLO MUESTRA RULETA + YAPE SI ESTÁS EN CESARINMAX -->
+<script>
+async function verificarRed() {
+  let enRed = false;
+  try {
+    // ⚡ Intenta conectar a tu MikroTik — si responde = estás ADENTRO
+    await fetch("http://172.16.1.1", {
+      mode: "no-cors",
+      signal: AbortSignal.timeout(1500), // ⏱️ 1.5 segundos
+      cache: "no-store"
+    });
+    enRed = true; // ✅ SÍ CONECTÓ → estás en tu red
+    console.log("✅ ESTÁS EN CESARINMAX — Mostrando Yape y Premios");
+  } catch {
+    enRed = false; // ⛔ NO CONECTÓ → estás con datos móviles u otra red
+    console.log("📡 Fuera de CESARINMAX — Yape y Premios ocultos");
+  }
+
+  // 🎯 SOLO los muestra si estás en tu red
+  const ruleta = document.querySelector('[data-ventana="premios"]');
+  const yape = document.getElementById('botonYape');
+  
+  if (enRed) {
+    if (ruleta) ruleta.style.display = 'flex';
+    if (yape) yape.style.display = 'flex';
+  } else {
+    if (ruleta) ruleta.style.display = 'none';
+    if (yape) yape.style.display = 'none';
+  }
+}
+
+// 🚀 Ejecutar al cargar la página — con retraso para que cargue todo
+window.addEventListener('load', () => {
+  setTimeout(verificarRed, 500); // Espera medio segundo
+});
+// 🔄 Revisar cada 5 segundos por si cambias de red
+setInterval(verificarRed, 5000);
+// ✅ FUNCIÓN PARA QUE LA APP ABRA LA CÁMARA
+function iniciarEscanerQR() {
+    if (window.Android && Android.escanearQR) {
+        // ✅ Estás en la app → abre la cámara de la app
+        Android.escanearQR();
+    } else {
+        // ✅ Estás en navegador → usa el escáner de la página
+        document.getElementById('btnEscanear').click();
+    }
+}
+
 </script>
+
 </body>
 </html>
