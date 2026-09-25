@@ -26,7 +26,6 @@ import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.firebase.database.FirebaseDatabase
 import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.*
 import org.json.JSONObject
@@ -143,37 +142,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    setContentView(R.layout.activity_main)
-    window.decorView.keepScreenOn = true
-    
-    pedirPermisoCamara()
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        window.decorView.keepScreenOn = true
+        
+        pedirPermisoCamara()
 
-    webView = findViewById(R.id.webView)
-    swipeRefresh = findViewById(R.id.swipeRefresh)
-    swipeRefresh.setColorSchemeColors(
-        0xFFFFCC00.toInt(),
-        0xFFFF6600.toInt(),
-        0xFF00CCFF.toInt()
-    )
-    swipeRefresh.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }
-    swipeRefresh.setOnRefreshListener {
-        webView.clearCache(true)
-        webView.reload()
-        swipeRefresh.isRefreshing = false
+        webView = findViewById(R.id.webView)
+        swipeRefresh = findViewById(R.id.swipeRefresh)
+        swipeRefresh.setColorSchemeColors(
+            0xFFFFCC00.toInt(),
+            0xFFFF6600.toInt(),
+            0xFF00CCFF.toInt()
+        )
+        swipeRefresh.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }
+        swipeRefresh.setOnRefreshListener {
+            webView.clearCache(true)
+            webView.reload()
+            swipeRefresh.isRefreshing = false
+        }
+        
+        configurarWebView()
+        mantenerAudioActivo()
+        
+        cargarPortal()
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            cargarConfigGist()
+        }
     }
-    
-    configurarWebView()
-    mantenerAudioActivo()
-    
-    // ✅ CARGA EL PORTAL DE UNA — SIN ESPERAR NADA
-    cargarPortal()
-    
-    // ✅ Gist en SEGUNDO PLANO — NO BLOQUEA NADA
-    CoroutineScope(Dispatchers.IO).launch {
-        cargarConfigGist()
-    }
-}
 
     override fun onPause() {
         super.onPause()
@@ -224,13 +221,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ ESCÁNER QR DIRECTO — SIN BUCLE
-    private val escanerQR = registerForActivityResult(com.journeyapps.barcodescanner.ScanContract()) { resultado ->
-    if (resultado != null && !resultado.contents.isNullOrEmpty()) {
-        val codigo = resultado.contents
-        webView.evaluateJavascript("javascript:document.getElementById('codigo').value='$codigo'; verificarCodigo();", null)
+    private val escanerQR = registerForActivityResult(ScanContract()) { resultado ->
+        if (resultado != null && !resultado.contents.isNullOrEmpty()) {
+            val codigo = resultado.contents
+            webView.evaluateJavascript("javascript:document.getElementById('codigo').value='$codigo'; verificarCodigo();", null)
+        }
     }
-}
 
     private fun iniciarEscaneoQR() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) 
@@ -249,18 +245,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun cargarConfigGist() {
-    try {
-        val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
-        configGist = JSONObject(URL(urlGist).readText())
-        val ca = configGist?.getJSONObject("app")
-        // ✅ Quita el !! para que NO crashee si no hay internet
-        numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113") ?: "+51974634113"
-    } catch (e: Exception) {
-        e.printStackTrace()
-        // ✅ Si falla, usa el número por defecto
-        numeroAdminWhatsapp = "+51974634113"
+        try {
+            val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
+            configGist = JSONObject(URL(urlGist).readText())
+            val ca = configGist?.getJSONObject("app")
+            numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113") ?: "+51974634113"
+        } catch (e: Exception) {
+            e.printStackTrace()
+            numeroAdminWhatsapp = "+51974634113"
+        }
     }
-}
 
     private fun ponerPantallaCompletaHorizontal() {
         orientacionOriginal = requestedOrientation
@@ -307,6 +301,21 @@ class MainActivity : AppCompatActivity() {
                     else -> false
                 }
             }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                webView.evaluateJavascript("""
+                    setTimeout(function(){
+                        document.body.style.visibility = 'visible';
+                        document.body.style.opacity = '1';
+                        document.documentElement.style.display = 'block';
+                    }, 500);
+                """.trimIndent(), null)
+            }
+
+            override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                Toast.makeText(this@MainActivity, "⚠️ Cargado parcialmente", Toast.LENGTH_SHORT).show()
+            }
         }
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -345,7 +354,7 @@ class MainActivity : AppCompatActivity() {
     inner class WebAppInterface(private val ctx: MainActivity) {
         @JavascriptInterface
         fun escanearQR() {
-            ctx.iniciarEscaneoQR() // ✅ DIRECTO — SIN BUCLE
+            ctx.iniciarEscaneoQR()
         }
         @JavascriptInterface
         fun premioGanado(jsonPremio: String) {
@@ -468,11 +477,20 @@ Por favor coordina la entrega.""".trimIndent()
 
         webView.visibility = View.VISIBLE
         webView.loadUrl("file:///android_asset/index.html")
-        
+
+        webView.postDelayed({
+            webView.evaluateJavascript("""
+                document.body.style.visibility = 'visible';
+                document.body.style.opacity = '1';
+                document.documentElement.style.display = 'block';
+                document.documentElement.style.overflow = 'auto';
+            """.trimIndent(), null)
+        }, 800)
+
         webView.evaluateJavascript("""
             window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: true }, '*');
         """.trimIndent(), null)
-        
+
         Toast.makeText(this, "✅ Conectado — Todo activo", Toast.LENGTH_SHORT).show()
     }
 
