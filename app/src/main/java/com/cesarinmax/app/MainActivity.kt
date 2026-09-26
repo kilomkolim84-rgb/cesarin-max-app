@@ -130,22 +130,28 @@ class MainActivity : AppCompatActivity() {
 
 // ========== 🔒 VERIFICACIÓN POR IP — SOLO 192.168.50.X ==========
 private fun verificarRed(): Boolean {
+    // 🔴 MODO PRUEBA — SIEMPRE PERMITE CUALQUIER IP
+    return true
+    
     /* DESCOMENTA LO DE ABAJO PARA VOLVER A BLOQUEAR POR IP
-     val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-     
-     if (!wifi.isWifiEnabled) return false
-     val ipInt = wifi.connectionInfo.ipAddress
-     if (ipInt == 0) return false
-     val ipStr = String.format(
-         Locale.getDefault(),
-         "%d.%d.%d.%d",
-         ipInt and 0xFF,
-         ipInt shr 8 and 0xFF,
-         ipInt shr 16 and 0xFF,
-         ipInt shr 24 and 0xFF
-     )
-     return ipStr.startsWith("172.16.1.")
-     */
+    val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+    
+    if (!wifi.isWifiEnabled) return false
+
+    val ipInt = wifi.connectionInfo.ipAddress
+    if (ipInt == 0) return false
+
+    val ipStr = String.format(
+        Locale.getDefault(),
+        "%d.%d.%d.%d",
+        ipInt and 0xFF,
+        ipInt shr 8 and 0xFF,
+        ipInt shr 16 and 0xFF,
+        ipInt shr 24 and 0xFF
+    )
+
+    return ipStr.startsWith("172.16.1.")
+    */
 }
     // ================================================================
 
