@@ -10,8 +10,7 @@
 
 <title>CIBER CESARÍN - ACCESO</title>
 
-<script src="hls.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
 <script>
 let reproductorActivo = null;
 let hlsActivo = null;
@@ -381,11 +380,11 @@ input:focus { outline:none; border-color:#ff4444; box-shadow:0 0 12px rgba(255,0
 </style>
 
 
-<script src="zxing.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 
-<script src="firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 
-<script src="firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
 
 
@@ -393,7 +392,15 @@ input:focus { outline:none; border-color:#ff4444; box-shadow:0 0 12px rgba(255,0
 
 <body>
 
+<script>
 
+window.intergramId = "8750977772";
+
+window.intergramCustomizations = {titleClosed:"💬 CIBER CESARÍN", titleOpen:"CIBER CESARÍN - EN LÍNEA", introMessage:"¡Hola! Escribe tu duda y te respondo al instante", autoResponse:"✅ Recibido, te contesto muy pronto", mainColor:"#00aaff", position:"left", alwaysUseFloatingButton:true};
+
+</script>
+
+<script id="intergram" type="text/javascript" src="https://www.intergram.xyz/js/widget.js"></script>
 
 <video id="videoFondo" autoplay muted loop playsinline><source src="fondo.mp4" type="video/mp4"></video>
 
@@ -403,9 +410,7 @@ input:focus { outline:none; border-color:#ff4444; box-shadow:0 0 12px rgba(255,0
 
   <div style="text-align:center; margin:25px 0;">
 
-    <button id="btnEscanear" 
-    onclick="iniciarEscanerQR(); return false;"
-style="background:#1A73E8; color:white; border:none; padding:16px 35px; font-size:20px; font-weight:bold; border-radius:14px; cursor:pointer; display:inline-flex; align-items:center; gap:12px;">
+    <button id="btnEscanear" style="background:#1A73E8; color:white; border:none; padding:16px 35px; font-size:20px; font-weight:bold; border-radius:14px; cursor:pointer; display:inline-flex; align-items:center; gap:12px;">
 
       <span style="font-size:26px;">📷</span> ESCANEAR QR
 
@@ -1742,7 +1747,10 @@ new MutationObserver(controlarFondo).observe(document.body, { childList: true, s
 </script>
 </script>
 </script>
-
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" 
+  src="https://connect.facebook.net/es_LA/sdk.js#xfbml=1&version=v22.0"></script>
+  
   <style>
   .ventana-noticias {
     position:fixed;
@@ -2151,17 +2159,6 @@ window.addEventListener('load', () => {
 });
 // 🔄 Revisar cada 5 segundos por si cambias de red
 setInterval(verificarRed, 5000);
-// ✅ FUNCIÓN PARA QUE LA APP ABRA LA CÁMARA
-function iniciarEscanerQR() {
-    if (window.Android && Android.escanearQR) {
-        // ✅ Estás en la app → abre la cámara de la app
-        Android.escanearQR();
-    } else {
-        // ✅ Estás en navegador → usa el escáner de la página
-        document.getElementById('btnEscanear').click();
-    }
-}
-
 </script>
 
 </body>
