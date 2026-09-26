@@ -185,7 +185,7 @@ private fun verificarRed(): Boolean {
         mantenerAudioActivo()
         
         CoroutineScope(Dispatchers.IO).launch {
-            cargarConfigGist()
+            //cargarConfigGist()//
             withContext(Dispatchers.Main) {
                 // ✅ CARGA SIEMPRE — SIN BLOQUEOS, SIN CARTEL QUE ESTORBE
                 cargarPortal()
@@ -228,14 +228,16 @@ private fun verificarRed(): Boolean {
             Toast.makeText(this, "✅ Cámara habilitada", Toast.LENGTH_SHORT).show()
     }
 
-    private fun cargarConfigGist() {
-        try {
-            val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
-            configGist = JSONObject(URL(urlGist).readText())
-            val ca = configGist?.getJSONObject("app")
-            numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113")!!
-        } catch (e: Exception) { e.printStackTrace() }
-    }
+    /* 🔴 NO SE USA AHORA
+private fun cargarConfigGist() {
+    try {
+        val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
+        configGist = JSONObject(URL(urlGist).readText())
+        val ca = configGist?.getJSONObject("app")
+        numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113")!!
+    } catch (e: Exception) { e.printStackTrace() }
+}
+*/
 
     private fun ponerPantallaCompletaHorizontal() {
         orientacionOriginal = requestedOrientation
