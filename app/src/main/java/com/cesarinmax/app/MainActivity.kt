@@ -33,6 +33,7 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.withTimeoutOrNull
 
 class MainActivity : AppCompatActivity() {
 
@@ -244,15 +245,22 @@ class MainActivity : AppCompatActivity() {
         escanerQR.launch(opciones)
     }
 
-    private fun cargarConfigGist() {
-        try {
-            val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
-            configGist = JSONObject(URL(urlGist).readText())
-            val ca = configGist?.getJSONObject("app")
-            numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113") ?: "+51974634113"
-        } catch (e: Exception) {
-            e.printStackTrace()
-            numeroAdminWhatsapp = "+51974634113"
+    private suspend fun cargarConfigGist() {
+        val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
+        
+        val resultado = withTimeoutOrNull(5000) { // ⏱️ 5 segundos máximo, si no hay internet sigue nomás
+            try {
+                configGist = JSONObject(URL(urlGist).readText())
+                val ca = configGist?.getJSONObject("app")
+                numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113") ?: "+51974634113"
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+        
+        if (resultado == null || resultado == false) {
+            numeroAdminWhatsapp = "+51974634113" // Valor por defecto si no se puede cargar
         }
     }
 
@@ -314,7 +322,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
-                Toast.makeText(this@MainActivity, "⚠️ Cargado parcialmente", Toast.LENGTH_SHORT).show()
+                // No mostrar toast molesto cuando no hay internet
             }
         }
 
