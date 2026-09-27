@@ -252,17 +252,17 @@ private fun cargarConfigGist() {
 
     private fun configurarWebView() {
         webView.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            allowFileAccess = true
-            allowContentAccess = true
-            mediaPlaybackRequiresUserGesture = false
-            cacheMode = WebSettings.LOAD_NO_CACHE
-            userAgentString = userAgentString + " CESARINMAX/1.0"
-            allowFileAccessFromFileURLs = true
-            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            setAllowUniversalAccessFromFileURLs(true)
-        }
+    javaScriptEnabled = true
+    domStorageEnabled = true
+    allowFileAccess = true
+    allowContentAccess = true
+    mediaPlaybackRequiresUserGesture = false
+    cacheMode = WebSettings.LOAD_NO_CACHE
+    userAgentString = userAgentString + " CESARINMAX/1.0"
+    allowFileAccessFromFileURLs = true
+mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+setAllowUniversalAccessFromFileURLs = true
+allowUniversalAccessFromFileURLs = true  // ✅ SIN // — ACTIVA
         webView.clearCache(true)
         webView.clearHistory()
         webView.addJavascriptInterface(WebAppInterface(this), "Android")
