@@ -1,487 +1,67 @@
-package com.cesarinmax.app
+package com.kilomkolim84rgb.cesarinmax
 
-import android.app.AlertDialog
 import android.Manifest
-import android.content.pm.ActivityInfo
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioAttributes
-import android.media.AudioFocusRequest
-import android.media.AudioManager
-import android.media.session.MediaSession
-import android.media.session.PlaybackState
-import android.net.Uri
-import android.net.wifi.WifiInfo
-import android.net.wifi.WifiManager
 import android.os.Bundle
-import android.os.PowerManager
-import android.view.View
-import android.view.ViewGroup
-import android.webkit.*
-import android.widget.FrameLayout
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import com.google.firebase.database.FirebaseDatabase
-import kotlinx.coroutines.*
-import org.json.JSONObject
-import java.net.URL
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import android.webkit.PermissionRequest
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
-    private lateinit var swipeRefresh: SwipeRefreshLayout
-    private var configGist: JSONObject? = null
-    
-    // ========== 🔒 SOLO NOMBRE DE RED — SIN MAC, SIN LÍOS ==========
-    // ===============================================================
-    
-    private val REQUEST_CAMERA = 1001
-    private var numeroAdminWhatsapp = "+51974634113"
 
-    private var customView: View? = null
-    private var customViewCallback: WebChromeClient.CustomViewCallback? = null
-    private var originalSystemUiVisibility: Int = 0
-    private var orientacionOriginal: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-
-    // ========== 🎵 RADIO — Audio en segundo plano ==========
-    private var wakeLock: PowerManager.WakeLock? = null
-    private var wifiLock: WifiManager.WifiLock? = null
-    private var audioManager: AudioManager? = null
-    private var audioFocusRequest: AudioFocusRequest? = null
-    private var mediaSession: MediaSession? = null
-    private var audioFocusGranted = false
-
-    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
-        audioFocusGranted = when (focusChange) {
-            AudioManager.AUDIOFOCUS_GAIN -> true
-            else -> false
+    private val permisoCamara = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { concedido ->
+        if (concedido) {
+            // Permiso otorgado → la cámara funciona
         }
     }
-
-    private fun mantenerAudioActivo() {
-        val pm = getSystemService(POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
-            "cesarinmax:radioWakeLock"
-        )
-        wakeLock?.acquire(12 * 60 * 60 * 1000L)
-
-        val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-        wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "cesarinmax:WifiLock")
-        wifiLock?.acquire()
-
-        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build()
-                )
-                setAcceptsDelayedFocusGain(true)
-                setOnAudioFocusChangeListener(audioFocusChangeListener)
-                build()
-            }
-            audioFocusRequest?.let { req ->
-                val result = audioManager?.requestAudioFocus(req)
-                audioFocusGranted = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            val result = audioManager?.requestAudioFocus(
-                audioFocusChangeListener,
-                AudioManager.STREAM_MUSIC,
-                AudioManager.AUDIOFOCUS_GAIN
-            )
-            audioFocusGranted = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-        }
-
-        mediaSession = MediaSession(this, "CESARINMAX_RADIO").apply {
-            setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
-            setCallback(object : MediaSession.Callback() {})
-            val state = PlaybackState.Builder()
-                .setState(PlaybackState.STATE_PLAYING, 0, 1.0f)
-                .build()
-            setPlaybackState(state)
-            isActive = true
-        }
-    }
-
-    private fun liberarBloqueos() {
-        if (wakeLock?.isHeld == true) wakeLock?.release()
-        if (wifiLock?.isHeld == true) wifiLock?.release()
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            audioFocusRequest?.let { audioManager?.abandonAudioFocusRequest(it) }
-        } else {
-            @Suppress("DEPRECATION")
-            audioManager?.abandonAudioFocus(audioFocusChangeListener)
-        }
-        mediaSession?.isActive = false
-        mediaSession?.release()
-    }
-    // ===============================================================
-
-// ========== 🔒 VERIFICACIÓN POR IP — SOLO 192.168.50.X ==========
-private fun verificarRed(): Boolean {
-    // 🔴 MODO PRUEBA — SIEMPRE PERMITE CUALQUIER IP
-    return true
-    
-    /* DESCOMENTA LO DE ABAJO PARA VOLVER A BLOQUEAR POR IP
-    val wifi = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-    
-    if (!wifi.isWifiEnabled) return false
-
-    val ipInt = wifi.connectionInfo.ipAddress
-    if (ipInt == 0) return false
-
-    val ipStr = String.format(
-        Locale.getDefault(),
-        "%d.%d.%d.%d",
-        ipInt and 0xFF,
-        ipInt shr 8 and 0xFF,
-        ipInt shr 16 and 0xFF,
-        ipInt shr 24 and 0xFF
-    )
-
-    return ipStr.startsWith("172.16.1.")
-    */
-}
-    // ================================================================
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        window.decorView.keepScreenOn = true
-        
-        pedirPermisoCamara()
 
-        webView = findViewById(R.id.webView)
-        
-        swipeRefresh = findViewById(R.id.swipeRefresh)
-        swipeRefresh.setColorSchemeColors(
-            0xFFFFCC00.toInt(),
-            0xFFFF6600.toInt(),
-            0xFF00CCFF.toInt()
-        )
+        permisoCamara.launch(Manifest.permission.CAMERA)
 
-        swipeRefresh.setOnChildScrollUpCallback { _, _ ->
-            webView.scrollY > 0
-        }
+        setContent {
+            AndroidView(
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.mediaPlaybackRequiresUserGesture = false
+                        settings.allowFileAccess = true
 
-        swipeRefresh.setOnRefreshListener {
-            webView.clearCache(true)
-            webView.reload()
-            swipeRefresh.isRefreshing = false
-        }
-        
-        configurarWebView()
-        mantenerAudioActivo()
-        
-        CoroutineScope(Dispatchers.IO).launch {
-            //cargarConfigGist()//
-            withContext(Dispatchers.Main) {
-                // ✅ CARGA SIEMPRE — SIN BLOQUEOS, SIN CARTEL QUE ESTORBE
-                cargarPortal()
-            }
-        }
-    }
+                        webViewClient = object : WebViewClient() {}
+                        
+                        webChromeClient = object : WebChromeClient() {
+                            override fun onPermissionRequest(request: PermissionRequest) {
+                                request.grant(request.resources)
+                            }
+                        }
 
-    // ✅ RADIO SIGUE SONANDO CON PANTALLA BLOQUEADA
-    override fun onPause() {
-        super.onPause()
-        webView.evaluateJavascript("javascript:pausarMusicaFondo();", null)
-        if (wakeLock?.isHeld != true) mantenerAudioActivo()
-        mediaSession?.isActive = true
-    }
-
-    override fun onResume() {
-        super.onResume()
-        webView.onResume()
-        webView.evaluateJavascript("javascript:reproducirMusicaFondo();", null)
-        if (wakeLock?.isHeld != true) mantenerAudioActivo()
-        mediaSession?.isActive = true
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        liberarBloqueos()
-        webView.stopLoading()
-        webView.removeAllViews()
-        webView.destroy()
-    }
-
-    private fun pedirPermisoCamara() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CAMERA && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
-            Toast.makeText(this, "✅ Cámara habilitada", Toast.LENGTH_SHORT).show()
-    }
-
-    /* 🔴 NO SE USA AHORA
-private fun cargarConfigGist() {
-    try {
-        val urlGist = "https://gist.githubusercontent.com/kilomkolim84-rgb/06685708f1b31fa79cd898b90333e315/raw/cesarin_max_config.json?t=" + System.currentTimeMillis()
-        configGist = JSONObject(URL(urlGist).readText())
-        val ca = configGist?.getJSONObject("app")
-        numeroAdminWhatsapp = ca?.optString("numero_admin_whatsapp", "+51974634113")!!
-    } catch (e: Exception) { e.printStackTrace() }
-}
-*/
-
-    private fun ponerPantallaCompletaHorizontal() {
-        orientacionOriginal = requestedOrientation
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
-    }
-
-    private fun salirPantallaCompleta() {
-        requestedOrientation = orientacionOriginal
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
-    }
-
-    private fun configurarWebView() {
-        webView.settings.apply {
-    javaScriptEnabled = true
-    domStorageEnabled = true
-    allowFileAccess = true
-    allowContentAccess = true
-    mediaPlaybackRequiresUserGesture = false
-    cacheMode = WebSettings.LOAD_NO_CACHE
-    userAgentString = userAgentString + " CESARINMAX/1.0"
-    allowFileAccessFromFileURLs = true
-mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-setAllowUniversalAccessFromFileURLs = true
-allowUniversalAccessFromFileURLs = true  // ✅ SIN // — ACTIVA
-        webView.clearCache(true)
-        webView.clearHistory()
-        webView.addJavascriptInterface(WebAppInterface(this), "Android")
-
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                url ?: return false
-                val u = url.lowercase()
-                return when {
-                    u.startsWith("whatsapp://") || u.startsWith("https://api.whatsapp.com") ||
-                    u.startsWith("https://wa.me/") || u.startsWith("https://chat.whatsapp.com/") -> {
-                        abrirEnlaceExterno(url!!)
-                        true
+                        loadUrl("file:///android_asset/login.html")
+                        webView = this
                     }
-                    u.startsWith("tel:") || u.startsWith("mailto:") -> {
-                        abrirEnlaceExterno(url!!)
-                        true
-                    }
-                    else -> false
-                }
-            }
-        }
-
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun onPermissionRequest(request: PermissionRequest) = runOnUiThread { request.grant(request.resources) }
-
-            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                if (customView != null) { callback?.onCustomViewHidden(); return }
-                customView = view
-                customViewCallback = callback
-                originalSystemUiVisibility = window.decorView.systemUiVisibility
-                val decor = window.decorView as FrameLayout
-                decor.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                ponerPantallaCompletaHorizontal()
-            }
-
-            override fun onHideCustomView() {
-                val decor = window.decorView as FrameLayout
-                customView?.let { decor.removeView(it) }
-                customViewCallback?.onCustomViewHidden()
-                customView = null
-                customViewCallback = null
-                window.decorView.systemUiVisibility = originalSystemUiVisibility
-                salirPantallaCompleta()
-            }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 
-    private fun abrirEnlaceExterno(url: String) {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (packageManager.queryIntentActivities(intent, 0).isNotEmpty()) startActivity(intent)
-            else Toast.makeText(this, "❌ No hay aplicación para abrir este enlace", Toast.LENGTH_LONG).show()
-        } catch (e: Exception) { Toast.makeText(this, "❌ Error: ${e.message}", Toast.LENGTH_LONG).show() }
-    }
-
-    inner class WebAppInterface(private val ctx: MainActivity) {
-        @JavascriptInterface
-    fun escanearQR() { ctx.escanearQR() }
-        @JavascriptInterface
-        fun premioGanado(jsonPremio: String) {
-            val p = JSONObject(jsonPremio)
-            when (p.optString("tipo", "ninguno")) {
-                "internet" -> ctx.crearTicketTiempo(p.optInt("minutos", 0), p.optString("nombre", "Premio"), p.optString("prefijo_codigo", ""))
-                "producto", "recarga" -> ctx.enviarPorWhatsApp(p.optString("nombre", "Premio"), p.optString("tipo", ""), p.optString("prefijo_codigo", ""))
-                else -> Toast.makeText(ctx, "Ganaste: ${p.optString("nombre", "Premio")}", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    fun crearTicketTiempo(minutos: Int, nombre: String, prefijo: String) {
-    if (!verificarRed()) {
-        Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-        return
-    }
-        val codigo = generarCodigo(prefijo)
-        val fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-        FirebaseDatabase.getInstance().reference.child("historial").child(codigo)
-            .setValue(mapOf(
-                "codigo" to codigo, "tiempo_minutos" to minutos, "monto" to 0.0, "fecha" to fecha,
-                "nombre_premio" to nombre, "origen" to "RULETA",
-                "leido_por_ticket" to false, "leido_por_monedero" to false, "leido_por_portal" to false
-            ))
-            .addOnSuccessListener { mostrarDialogoGanaste(codigo, minutos, nombre) }
-            .addOnFailureListener { Toast.makeText(this, "❌ Error guardando", Toast.LENGTH_SHORT).show() }
-    }
-
-    private fun mostrarDialogoGanaste(codigo: String, minutos: Int, nombre: String) {
-        val tiempoStr = if (minutos >= 60) { val h = minutos / 60; val m = minutos % 60; if (m > 0) "$h h $m m" else "$h horas" } else "$minutos min"
-        AlertDialog.Builder(this)
-            .setTitle("🎉 ¡GANASTE!")
-            .setMessage("🏆 $nombre\n\n🔢 Código: $codigo\n⏱️ Tiempo: $tiempoStr\n\nGuarda este código o compártelo.")
-            .setPositiveButton("📤 COMPARTIR") { _, _ -> compartir(codigo, nombre, tiempoStr) }
-            .setNegativeButton("✅ LISTO", null)
-            .show()
-    }
-
-    fun enviarPorWhatsApp(nombre: String, tipo: String, prefijo: String) {
-    if (!verificarRed()) {
-        Toast.makeText(this, "❌ Solo disponible en WiFi CESARINMAX", Toast.LENGTH_SHORT).show()
-        return
-    }
-        val codigo = generarCodigoCorto(prefijo)
-        val tipoStr = if (tipo == "producto") "Producto" else if (tipo == "recarga") "Recarga / Diamantes" else "Premio"
-        val msj = """🎉 ¡GANASTE EN LA RULETA CESARINMAX!
-            
-🏆 Premio: $nombre
-📦 Tipo: $tipoStr
-🔢 Código: $codigo
-            
-Por favor coordina la entrega.""".trimIndent()
-        val num = numeroAdminWhatsapp.replace("+", "").replace(" ", "")
-        abrirEnlaceExterno("https://api.whatsapp.com/send?phone=$num&text=${Uri.encode(msj)}")
-    }
-
-    private fun generarCodigo(prefijo: String) = (if (prefijo.isNotEmpty()) "$prefijo-" else "") + (100000..999999).random()
-    private fun generarCodigoCorto(prefijo: String): String {
-        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        val code = (1..4).map { chars.random() }.joinToString("")
-        return if (prefijo.isNotEmpty()) "$prefijo-$code" else code
-    }
-
-    private fun compartir(codigo: String, nombre: String, tiempo: String) {
-        val txt = """🎟️ CESARINMAX — Código de canje
-🏆 Premio: $nombre
-🔢 Código: $codigo
-⏱️ Tiempo: $tiempo
-            
-¡Canjéalo en el local!""".trimIndent()
-        val i = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, txt) }
-        startActivity(Intent.createChooser(i, "Compartir código"))
-    }
-
-    private fun cargarPortal() {
-    // ✅ CÁMARA INTACTA — NO TOCAR
-    
-    webView.clearCache(true)
-    webView.clearHistory()
-    webView.stopLoading()
-
-    val enRango = verificarRed()
-
-    if (!enRango) {
-        // ❌ FUERA DE IP → SOLO IMAGEN, NO CARGA EL PORTAL
-        webView.loadDataWithBaseURL(null, """
-            <html>
-            <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    * { margin:0; padding:0; font-family:Arial,sans-serif; }
-                    body {
-                        background:#000;
-                        min-height:100vh;
-                        display:flex;
-                        flex-direction:column;
-                        align-items:center;
-                        justify-content:center;
-                        text-align:center;
-                        color:#fff;
-                        padding:20px;
-                    }
-                    .logo { max-width:280px; width:80%; margin-bottom:30px; }
-                    .titulo { font-size:26px; color:#ffcc00; font-weight:bold; margin-bottom:20px; }
-                    .mensaje { font-size:18px; color:#ccc; line-height:1.8; }
-                </style>
-            </head>
-            <body>
-                <img src="file:///android_res/drawable/cesarinmax_preview.png" alt="CESARINMAX" class="logo">
-                <div class="titulo">ACCESO RESTRINGIDO</div>
-                <div class="mensaje">
-                    Conéctate al WiFi CESARINMAX<br>
-                    y vuelve a abrir la aplicación
-                </div>
-            </body>
-            </html>
-        """.trimIndent(), "text/html", "UTF-8", null)
-
-        Toast.makeText(this, "❌ Conéctate a la red CESARINMAX", Toast.LENGTH_LONG).show()
-        return
-    }
-
-    webView.visibility = View.VISIBLE
-    
-    // ✅ DENTRO DE LA IP → TODO NORMAL
-    webView.loadUrl("file:///android_asset/index.html")
-    
-    webView.evaluateJavascript("""
-        window.postMessage({ tipo: 'estadoRed', enRedCesarinmax: true }, '*');
-    """.trimIndent(), null)
-    
-    Toast.makeText(this, "✅ Conectado — Todo activo", Toast.LENGTH_SHORT).show()
-}
     override fun onBackPressed() {
-        if (customView != null) { webView.webChromeClient?.onHideCustomView(); return }
-        webView.evaluateJavascript("(function(){if(typeof cerrarVentanaDesdeApp==='function')return cerrarVentanaDesdeApp()?'cerrado':'no';return'no';})()") { res ->
-            val r = res.removeSurrounding("\"")
-            when { r == "cerrado" -> {}; webView.canGoBack() -> webView.goBack(); else -> salir() }
-        }
-    }
-
-    private fun salir() {
-        AlertDialog.Builder(this)
-            .setTitle("🚪 Salir")
-            .setMessage("¿Salir de CESARINMAX?")
-            .setPositiveButton("✅ Sí") { _, _ -> finishAffinity() }
-            .setNegativeButton("❌ No", null)
-            .show()
-    }
-        // ✅ ESCANEO QR
-    @JavascriptInterface
-    fun escanearQR() {
-        runOnUiThread {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) 
-                == PackageManager.PERMISSION_GRANTED) {
-                webView.evaluateJavascript("javascript:iniciarEscanerQR()", null)
-            } else {
-                pedirPermisoCamara()
-                Toast.makeText(this@MainActivity, "⚠️ Concede permiso de cámara primero", Toast.LENGTH_LONG).show()
-            }
+        if (::webView.isInitialized && webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
         }
     }
 }
