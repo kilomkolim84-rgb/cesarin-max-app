@@ -7,12 +7,9 @@ import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
 
 class MainActivity : ComponentActivity() {
 
@@ -21,9 +18,7 @@ class MainActivity : ComponentActivity() {
     private val permisoCamara = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { concedido ->
-        if (concedido) {
-            // Permiso otorgado → la cámara funciona
-        }
+        // listo
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,34 +26,35 @@ class MainActivity : ComponentActivity() {
 
         permisoCamara.launch(Manifest.permission.CAMERA)
 
-        setContent {
-            AndroidView(
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.mediaPlaybackRequiresUserGesture = false
-                        settings.allowFileAccess = true
+        webView = WebView(this).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.mediaPlaybackRequiresUserGesture = false
+            settings.allowFileAccess = true
 
-                        webViewClient = object : WebViewClient() {}
-                        
-                        webChromeClient = object : WebChromeClient() {
-                            override fun onPermissionRequest(request: PermissionRequest) {
-                                request.grant(request.resources)
-                            }
-                        }
+            webViewClient = object : WebViewClient() {}
+            
+            webChromeClient = object : WebChromeClient() {
+                override fun onPermissionRequest(request: PermissionRequest) {
+                    request.grant(request.resources)
+                }
+            }
 
-                        loadUrl("file:///android_asset/login.html")
-                        webView = this
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+            loadUrl("file:///android_asset/login.html")
         }
+
+        setContentView(
+            LinearLayout(this).apply {
+                addView(webView, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.MATCH_PARENT
+                ))
+            }
+        )
     }
 
     override fun onBackPressed() {
-        if (::webView.isInitialized && webView.canGoBack()) {
+        if (webView.canGoBack()) {
             webView.goBack()
         } else {
             super.onBackPressed()
