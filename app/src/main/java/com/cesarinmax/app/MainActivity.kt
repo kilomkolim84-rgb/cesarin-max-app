@@ -1,4 +1,4 @@
-package com.kilomkolim84rgb.cesarinmax
+package com.cesarinmax.app
 
 import android.Manifest
 import android.content.pm.PackageManager
