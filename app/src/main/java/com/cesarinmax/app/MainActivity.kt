@@ -31,8 +31,20 @@ class MainActivity : ComponentActivity() {
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
             settings.allowFileAccess = true
+            
+            // ✅ ESTO ARREGLÓ LA PANTALLA NEGRA CON HTTPS
+            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
-            webViewClient = object : WebViewClient() {}
+            webViewClient = object : WebViewClient() {
+                // ✅ Confía en el certificado del MikroTik
+                override fun onReceivedSslError(
+                    view: WebView?,
+                    handler: android.webkit.SslErrorHandler?,
+                    error: android.net.http.SslError?
+                ) {
+                    handler?.proceed() // Confía y continúa
+                }
+            }
             
             webChromeClient = object : WebChromeClient() {
                 override fun onPermissionRequest(request: PermissionRequest) {
@@ -40,6 +52,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // ✅ TU DIRECCIÓN EN HTTPS
             loadUrl("https://172.16.1.1/login.html")
         }
 
