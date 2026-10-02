@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            loadUrl("http://172.16.1.1/login.html")
+            loadUrl("https://172.16.1.1/login.html")
         }
 
         setContentView(
