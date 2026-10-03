@@ -10,11 +10,13 @@ import android.webkit.WebViewClient
 import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.*
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
-    private var yaMostroError = false // Para no repetir el mensaje
+    private var yaMostroError = false
+    private val alcanceCorutina = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private val permisoCamara = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -35,10 +37,18 @@ class MainActivity : ComponentActivity() {
 
                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
-                    yaMostroError = false // Reinicia al recargar
+                    yaMostroError = false
+                    // ✅ Si en 8 segundos no carga → mostramos el mensaje
+                    alcanceCorutina.launch {
+                        delay(8000)
+                        if (!yaMostroError) {
+                            yaMostroError = true
+                            mostrarMensaje(view)
+                        }
+                    }
                 }
 
-                // ✅ SIN CONEXIÓN / TIEMPO AGOTADO / FUERA DE RED
+                // ✅ SIN CONEXIÓN → mensaje inmediato
                 override fun onReceivedError(
                     view: WebView?,
                     request: WebResourceRequest?,
@@ -47,28 +57,25 @@ class MainActivity : ComponentActivity() {
                     super.onReceivedError(view, request, error)
                     if (request?.isForMainFrame == true && !yaMostroError) {
                         yaMostroError = true
-                        mostrarMensajePersonalizado(view)
+                        alcanceCorutina.coroutineContext.cancelChildren()
+                        mostrarMensaje(view)
                     }
                 }
 
-                // ✅ DETECTA 404 / PÁGINA NO ENCONTRADA
+                // ✅ PÁGINA CARGÓ → cancelamos el temporizador
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
+                    alcanceCorutina.coroutineContext.cancelChildren()
                     
                     view?.evaluateJavascript("""
                         (function(){
-                            const body = document.body.innerText.toLowerCase();
-                            const titulo = document.title.toLowerCase();
-                            if (body.includes("404") || body.includes("not found") || 
-                                titulo.includes("404") || body.includes("error")) {
-                                return "mostrar_error";
-                            }
-                            return "ok";
+                            const t = document.body.innerText.toLowerCase();
+                            return (t.includes("404") || t.includes("not found")) ? "404" : "ok";
                         })()
-                    """) { resultado ->
-                        if (resultado == "\"mostrar_error\"" && !yaMostroError) {
+                    """) { res ->
+                        if (res == "\"404\"" && !yaMostroError) {
                             yaMostroError = true
-                            mostrarMensajePersonalizado(view)
+                            mostrarMensaje(view)
                         }
                     }
                 }
@@ -78,7 +85,7 @@ class MainActivity : ComponentActivity() {
                     handler: android.webkit.SslErrorHandler?,
                     error: android.net.http.SslError?
                 ) {
-                    handler?.proceed() // Confiar en el certificado
+                    handler?.proceed()
                 }
             }
 
@@ -88,12 +95,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // ✅ TU DIRECCIÓN DEL PORTAL
             loadUrl("https://172.16.1.1/login.html")
         }
 
         setContentView(
             LinearLayout(this).apply {
+                setBackgroundColor(android.graphics.Color.parseColor("#000520")) // Fondo fijo
                 addView(webView, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.MATCH_PARENT
@@ -102,8 +109,7 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    // ✅ TU MENSAJE — SOLO APARECE CUANDO ESTÁ FUERA DE RED
-    private fun mostrarMensajePersonalizado(view: WebView?) {
+    private fun mostrarMensaje(view: WebView?) {
         val html = """
 <!DOCTYPE html>
 <html>
@@ -112,22 +118,17 @@ class MainActivity : ComponentActivity() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
-        body{
-            background:linear-gradient(180deg,#000520,#000);
-            color:#ffffff;
-            text-align:center;
-            padding:80px 20px;
-            min-height:100vh;
-        }
+        html,body{height:100%;background:linear-gradient(180deg,#000520,#000);color:#fff;}
+        body{text-align:center;padding:60px 20px;min-height:100vh;}
         .icono{font-size:70px;margin-bottom:20px;}
         h1{color:#ffcc00;font-size:26px;margin-bottom:25px;}
-        p{font-size:18px;line-height:1.7;color:#dddddd;max-width:400px;margin:0 auto 15px;}
-        .consejo{color:#888888;margin-top:35px;font-size:15px;}
+        p{font-size:18px;line-height:1.7;color:#ddd;max-width:400px;margin:0 auto 15px;}
+        .consejo{color:#888;margin-top:35px;font-size:15px;}
         .boton{
             margin-top:40px;
             padding:15px 45px;
             background:linear-gradient(90deg,#ffcc00,#ff9900);
-            color:#000000;
+            color:#000;
             border:none;
             border-radius:12px;
             font-size:19px;
@@ -140,7 +141,7 @@ class MainActivity : ComponentActivity() {
     <div class="icono">📶</div>
     <h1>Fuera de cobertura</h1>
     <p>No estás conectado al WiFi de Ciber Cesarín.</p>
-    <p class="consejo">Conéctate al WiFi del servicio<br>y vuelve a abrir la aplicación.</p>
+    <p class="consejo">Conéctate al WiFi del servicio<br>y vuelve a intentar.</p>
     <button class="boton" onclick="location.reload()">🔄 Volver a intentar</button>
 </body>
 </html>
@@ -153,6 +154,11 @@ class MainActivity : ComponentActivity() {
             "UTF-8",
             null
         )
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        alcanceCorutina.cancel()
     }
 
     override fun onBackPressed() {
