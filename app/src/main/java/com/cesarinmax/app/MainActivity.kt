@@ -3,7 +3,6 @@ package com.cesarinmax.app
 import android.Manifest
 import android.os.Bundle
 import android.webkit.PermissionRequest
-import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -15,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
+    private var yaMostroError = false // Para no repetir el mensaje
 
     private val permisoCamara = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -32,34 +32,63 @@ class MainActivity : ComponentActivity() {
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
             webViewClient = object : WebViewClient() {
-                
-                override fun onReceivedSslError(
-                    view: WebView?,
-                    handler: android.webkit.SslErrorHandler?,
-                    error: android.net.http.SslError?
-                ) {
-                    handler?.proceed()
+
+                override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                    super.onPageStarted(view, url, favicon)
+                    yaMostroError = false // Reinicia al recargar
                 }
 
-                // ✅ Versión NUEVA — Android 7+
+                // ✅ SIN CONEXIÓN / TIEMPO AGOTADO / FUERA DE RED
                 override fun onReceivedError(
                     view: WebView?,
                     request: WebResourceRequest?,
                     error: WebResourceError?
                 ) {
                     super.onReceivedError(view, request, error)
-                    if (request?.isForMainFrame == true) {
-                        mostrarError(view)
+                    if (request?.isForMainFrame == true && !yaMostroError) {
+                        yaMostroError = true
+                        mostrarMensajePersonalizado(view)
                     }
                 }
+
+                // ✅ DETECTA 404 / PÁGINA NO ENCONTRADA
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    
+                    view?.evaluateJavascript("""
+                        (function(){
+                            const body = document.body.innerText.toLowerCase();
+                            const titulo = document.title.toLowerCase();
+                            if (body.includes("404") || body.includes("not found") || 
+                                titulo.includes("404") || body.includes("error")) {
+                                return "mostrar_error";
+                            }
+                            return "ok";
+                        })()
+                    """) { resultado ->
+                        if (resultado == "\"mostrar_error\"" && !yaMostroError) {
+                            yaMostroError = true
+                            mostrarMensajePersonalizado(view)
+                        }
+                    }
+                }
+
+                override fun onReceivedSslError(
+                    view: WebView?,
+                    handler: android.webkit.SslErrorHandler?,
+                    error: android.net.http.SslError?
+                ) {
+                    handler?.proceed() // Confiar en el certificado
+                }
             }
-            
-            webChromeClient = object : WebChromeClient() {
+
+            webChromeClient = object : android.webkit.WebChromeClient() {
                 override fun onPermissionRequest(request: PermissionRequest) {
                     request.grant(request.resources)
                 }
             }
 
+            // ✅ TU DIRECCIÓN DEL PORTAL
             loadUrl("https://172.16.1.1/login.html")
         }
 
@@ -73,29 +102,48 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun mostrarError(view: WebView?) {
+    // ✅ TU MENSAJE — SOLO APARECE CUANDO ESTÁ FUERA DE RED
+    private fun mostrarMensajePersonalizado(view: WebView?) {
         val html = """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
-                    body{background:linear-gradient(180deg,#000520,#000);color:#fff;text-align:center;padding:60px 20px;min-height:100vh;}
-                    h2{color:#ffcc00;font-size:24px;margin-bottom:15px;}
-                    p{font-size:17px;line-height:1.6;color:#ddd;margin-bottom:10px;}
-                    .consejo{color:#888;margin-top:30px;font-size:15px;}
-                    .boton{margin-top:35px;padding:14px 40px;background:linear-gradient(90deg,#0066ff,#00ccff);color:#fff;border:none;border-radius:10px;font-size:18px;font-weight:bold;cursor:pointer;}
-                </style>
-            </head>
-            <body>
-                <h2>⚠️ Portal no disponible</h2>
-                <p>No se pudo conectar al portal de Ciber Cesarín.</p>
-                <p class="consejo">Verifica que estás conectado al WiFi correcto<br>y vuelve a abrir la aplicación.</p>
-                <button class="boton" onclick="location.reload()">🔄 Reintentar</button>
-            </body>
-            </html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+        body{
+            background:linear-gradient(180deg,#000520,#000);
+            color:#ffffff;
+            text-align:center;
+            padding:80px 20px;
+            min-height:100vh;
+        }
+        .icono{font-size:70px;margin-bottom:20px;}
+        h1{color:#ffcc00;font-size:26px;margin-bottom:25px;}
+        p{font-size:18px;line-height:1.7;color:#dddddd;max-width:400px;margin:0 auto 15px;}
+        .consejo{color:#888888;margin-top:35px;font-size:15px;}
+        .boton{
+            margin-top:40px;
+            padding:15px 45px;
+            background:linear-gradient(90deg,#ffcc00,#ff9900);
+            color:#000000;
+            border:none;
+            border-radius:12px;
+            font-size:19px;
+            font-weight:bold;
+            cursor:pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="icono">📶</div>
+    <h1>Fuera de cobertura</h1>
+    <p>No estás conectado al WiFi de Ciber Cesarín.</p>
+    <p class="consejo">Conéctate al WiFi del servicio<br>y vuelve a abrir la aplicación.</p>
+    <button class="boton" onclick="location.reload()">🔄 Volver a intentar</button>
+</body>
+</html>
         """.trimIndent()
 
         view?.loadDataWithBaseURL(
