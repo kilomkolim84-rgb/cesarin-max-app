@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.LinearLayout
@@ -44,7 +46,21 @@ class MainActivity : ComponentActivity() {
                     handler?.proceed()
                 }
 
-                // ✅ MUESTRA TU MENSAJE CUANDO NO CONECTA
+                // ✅ VERSIÓN CORRECTA DE ERROR — funciona en Android N+
+                override fun onReceivedError(
+                    view: WebView?,
+                    request: WebResourceRequest?,
+                    error: WebResourceError?
+                ) {
+                    super.onReceivedError(view, request, error)
+                    // Solo mostramos error en la página principal, no en recursos internos
+                    if (request?.isForMainFrame == true) {
+                        mostrarMensajeErrorPersonalizado(view)
+                    }
+                }
+
+                // ✅ Versión antigua para celulares más viejos
+                @Suppress("DEPRECATION")
                 override fun onReceivedError(
                     view: WebView?,
                     errorCode: Int,
