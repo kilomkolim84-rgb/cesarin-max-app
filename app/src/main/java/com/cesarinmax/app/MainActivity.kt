@@ -31,18 +31,27 @@ class MainActivity : ComponentActivity() {
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
             settings.allowFileAccess = true
-            
-            // ✅ ESTO ARREGLÓ LA PANTALLA NEGRA CON HTTPS
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
             webViewClient = object : WebViewClient() {
-                // ✅ Confía en el certificado del MikroTik
+                
+                // ✅ Confía en el certificado
                 override fun onReceivedSslError(
                     view: WebView?,
                     handler: android.webkit.SslErrorHandler?,
                     error: android.net.http.SslError?
                 ) {
-                    handler?.proceed() // Confía y continúa
+                    handler?.proceed()
+                }
+
+                // ✅ MUESTRA TU MENSAJE CUANDO NO CONECTA
+                override fun onReceivedError(
+                    view: WebView?,
+                    errorCode: Int,
+                    description: String?
+                ) {
+                    super.onReceivedError(view, errorCode, description)
+                    mostrarMensajeErrorPersonalizado(view)
                 }
             }
             
@@ -52,7 +61,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // ✅ TU DIRECCIÓN EN HTTPS
             loadUrl("https://172.16.1.1/login.html")
         }
 
@@ -63,6 +71,59 @@ class MainActivity : ComponentActivity() {
                     LinearLayout.LayoutParams.MATCH_PARENT
                 ))
             }
+        )
+    }
+
+    // ✅ PANTALLA DE ERROR PERSONALIZADA
+    private fun mostrarMensajeErrorPersonalizado(view: WebView?) {
+        val htmlError = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+                    body{
+                        background:linear-gradient(180deg,#000520,#000);
+                        color:#fff;
+                        text-align:center;
+                        padding:60px 20px;
+                        min-height:100vh;
+                    }
+                    .icono{font-size:60px;margin-bottom:20px;}
+                    h2{color:#ffcc00;font-size:24px;margin-bottom:15px;}
+                    p{font-size:17px;line-height:1.6;color:#ddd;margin-bottom:10px;}
+                    .consejo{color:#888;margin-top:30px;font-size:15px;}
+                    .boton{
+                        margin-top:35px;
+                        padding:14px 40px;
+                        background:linear-gradient(90deg,#0066ff,#00ccff);
+                        color:#fff;
+                        border:none;
+                        border-radius:10px;
+                        font-size:18px;
+                        font-weight:bold;
+                        cursor:pointer;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="icono">⚠️</div>
+                <h2>Portal no disponible</h2>
+                <p>No se pudo conectar al portal de Ciber Cesarín.</p>
+                <p class="consejo">Verifica que estás conectado al WiFi correcto<br>y vuelve a abrir la aplicación.</p>
+                <button class="boton" onclick="location.reload()">🔄 Reintentar</button>
+            </body>
+            </html>
+        """.trimIndent()
+
+        view?.loadDataWithBaseURL(
+            "https://172.16.1.1/",
+            htmlError,
+            "text/html",
+            "UTF-8",
+            null
         )
     }
 
