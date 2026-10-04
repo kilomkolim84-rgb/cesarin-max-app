@@ -1,6 +1,8 @@
 package com.cesarinmax.app
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.webkit.PermissionRequest
 import android.webkit.WebResourceError
@@ -33,12 +35,17 @@ class MainActivity : ComponentActivity() {
             settings.allowFileAccess = true
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
+            // ✅ SOLO AGREGUÉ ESTO — DESCARGA
+            setDownloadListener { url, _, _, _, _ ->
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                startActivity(intent)
+            }
+
             webViewClient = object : WebViewClient() {
 
                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
                     yaMostroError = false
-                    // ✅ Si en 8 segundos no carga → mostramos el mensaje
                     alcanceCorutina.launch {
                         delay(8000)
                         if (!yaMostroError) {
@@ -48,7 +55,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // ✅ SIN CONEXIÓN → mensaje inmediato
                 override fun onReceivedError(
                     view: WebView?,
                     request: WebResourceRequest?,
@@ -62,7 +68,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // ✅ PÁGINA CARGÓ → cancelamos el temporizador
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
                     alcanceCorutina.coroutineContext.cancelChildren()
@@ -95,12 +100,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // ✅ IGUAL QUE TENÍAS — NO LO TOQUÉ
             loadUrl("https://172.16.1.1/login.html")
         }
 
         setContentView(
             LinearLayout(this).apply {
-                setBackgroundColor(android.graphics.Color.parseColor("#000520")) // Fondo fijo
+                setBackgroundColor(android.graphics.Color.parseColor("#000520"))
                 addView(webView, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.MATCH_PARENT
