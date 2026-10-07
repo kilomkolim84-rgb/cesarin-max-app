@@ -3,8 +3,9 @@ package com.cesarinmax.app
 import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
 import android.net.Uri
+import android.net.wifi.WifiInfo
+import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.webkit.PermissionRequest
 import android.webkit.WebResourceError
@@ -15,6 +16,7 @@ import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.*
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
@@ -30,40 +32,41 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         permisoCamara.launch(Manifest.permission.CAMERA)
 
-        // 🔒 VERIFICACIÓN DE IP — SI NO ESTÁ EN 172.16.1.x → MUESTRA TU PANTALLA
-        if (!estaEnRedPermitida()) {
+        // 🔒 VERIFICACIÓN — USANDO EL MÉTODO QUE SÍ FUNCIONA
+        if (!verificarRed()) {
             setContentView(crearPantallaRestringida())
             return
         }
 
-        // ✅ SI ESTÁ BIEN → CARGA EL WEBVIEW NORMAL
+        // ✅ SI ESTÁ BIEN → CARGA NORMAL
         configurarWebView()
     }
 
     // ==============================================
-    // ✅ VERIFICAR RANGO 172.16.1.0/24
+    // ✅ FUNCIÓN DE IP — EXACTAMENTE COMO LA QUE SÍ FUNCIONA
     // ==============================================
-    private fun estaEnRedPermitida(): Boolean {
-        val ip = obtenerIP() ?: return false
-        val partes = ip.split(".").map { it.toIntOrNull() ?: 0 }
-        if (partes.size != 4) return false
-        val (a, b, c, _) = partes
-        return a == 172 && b == 16 && c == 1
+    private fun verificarRed(): Boolean {
+        val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        
+        if (!wifi.isWifiEnabled) return false
+
+        val ipInt = wifi.connectionInfo.ipAddress
+        if (ipInt == 0) return false
+
+        val ipStr = String.format(
+            Locale.getDefault(),
+            "%d.%d.%d.%d",
+            ipInt and 0xFF,
+            ipInt shr 8 and 0xFF,
+            ipInt shr 16 and 0xFF,
+            ipInt shr 24 and 0xFF
+        )
+
+        return ipStr.startsWith("172.16.1.")
     }
 
-    private fun obtenerIP(): String? {
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = cm.activeNetwork ?: return null
-        val props = cm.getLinkProperties(network) ?: return null
-        props.linkAddresses.forEach { addr ->
-            val ip = addr.address.hostAddress
-            if (ip != null && ip.startsWith("172.16.1.")) return ip
-        }
-        return null
-    }
-
     // ==============================================
-    // ❌ TU PANTALLA EXACTA — ACCESO RESTRINGIDO
+    // ❌ TU PANTALLA DE ACCESO RESTRINGIDO
     // ==============================================
     private fun crearPantallaRestringida(): LinearLayout {
         return LinearLayout(this).apply {
@@ -105,7 +108,7 @@ class MainActivity : ComponentActivity() {
     }
 
     // ==============================================
-    // 🌐 TU WEBVIEW TAL CUAL LO TENÍAS
+    // 🌐 TU WEBVIEW — IGUAL QUE LA TENÍAS
     // ==============================================
     private fun configurarWebView() {
         webView = WebView(this).apply {
