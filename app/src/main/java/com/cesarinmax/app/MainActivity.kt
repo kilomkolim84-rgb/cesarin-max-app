@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.webkit.PermissionRequest
@@ -21,7 +20,6 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
-    private var yaMostroError = false
     private val alcanceCorutina = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private val permisoCamara = registerForActivityResult(
@@ -32,18 +30,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         permisoCamara.launch(Manifest.permission.CAMERA)
 
-        // 🔒 VERIFICACIÓN — USANDO EL MÉTODO QUE SÍ FUNCIONA
+        // 🔒 VERIFICACIÓN — SI NO ESTÁ → TU PANTALLA SOLAMENTE
         if (!verificarRed()) {
             setContentView(crearPantallaRestringida())
             return
         }
 
-        // ✅ SI ESTÁ BIEN → CARGA NORMAL
+        // ✅ SI ESTÁ → ENTRA DIRECTO AL PORTAL
         configurarWebView()
     }
 
     // ==============================================
-    // ✅ FUNCIÓN DE IP — EXACTAMENTE COMO LA QUE SÍ FUNCIONA
+    // ✅ DETECCIÓN DE IP — LA QUE SÍ FUNCIONA
     // ==============================================
     private fun verificarRed(): Boolean {
         val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
@@ -66,7 +64,7 @@ class MainActivity : ComponentActivity() {
     }
 
     // ==============================================
-    // ❌ TU PANTALLA DE ACCESO RESTRINGIDO
+    // ❌ TU PANTALLA — ÚNICA QUE SE MUESTRA
     // ==============================================
     private fun crearPantallaRestringida(): LinearLayout {
         return LinearLayout(this).apply {
@@ -101,14 +99,14 @@ class MainActivity : ComponentActivity() {
                 setTextColor(android.graphics.Color.parseColor("#000000"))
                 textSize = 18f
                 setPadding(40, 15, 40, 15)
-                setOnClickListener { recreate() }
+                setOnClickListener { recreate() } // ← Vuelve a revisar y entra si ya está
             }
             addView(btn)
         }
     }
 
     // ==============================================
-    // 🌐 TU WEBVIEW — IGUAL QUE LA TENÍAS
+    // 🌐 WEBVIEW LIMPIO — SIN PANTALLAS DE MÁS
     // ==============================================
     private fun configurarWebView() {
         webView = WebView(this).apply {
@@ -124,43 +122,7 @@ class MainActivity : ComponentActivity() {
             }
 
             webViewClient = object : WebViewClient() {
-                override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                    super.onPageStarted(view, url, favicon)
-                    yaMostroError = false
-                    alcanceCorutina.launch {
-                        delay(8000)
-                        if (!yaMostroError) {
-                            yaMostroError = true
-                            mostrarMensaje(view)
-                        }
-                    }
-                }
-
-                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                    super.onReceivedError(view, request, error)
-                    if (request?.isForMainFrame == true && !yaMostroError) {
-                        yaMostroError = true
-                        alcanceCorutina.coroutineContext.cancelChildren()
-                        mostrarMensaje(view)
-                    }
-                }
-
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    super.onPageFinished(view, url)
-                    alcanceCorutina.coroutineContext.cancelChildren()
-                    view?.evaluateJavascript("""
-                        (function(){
-                            const t = document.body.innerText.toLowerCase();
-                            return (t.includes("404") || t.includes("not found")) ? "404" : "ok";
-                        })()
-                    """) { res ->
-                        if (res == "\"404\"" && !yaMostroError) {
-                            yaMostroError = true
-                            mostrarMensaje(view)
-                        }
-                    }
-                }
-
+                // ❌ QUITADO EL RETRASO Y LA PANTALLA "FUERA DE COBERTURA"
                 override fun onReceivedSslError(view: WebView?, handler: android.webkit.SslErrorHandler?, error: android.net.http.SslError?) {
                     handler?.proceed()
                 }
@@ -172,7 +134,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            loadUrl("https://172.16.1.1/login.html")
+            // ✅ CARGA TU PORTAL DIRECTO
+            loadUrl("http://172.16.1.1/login.html")
         }
 
         setContentView(
@@ -184,37 +147,6 @@ class MainActivity : ComponentActivity() {
                 ))
             }
         )
-    }
-
-    private fun mostrarMensaje(view: WebView?) {
-        val html = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
-        html,body{height:100%;background:linear-gradient(180deg,#000520,#000);color:#fff;}
-        body{text-align:center;padding:60px 20px;min-height:100vh;}
-        .icono{font-size:70px;margin-bottom:20px;}
-        h1{color:#ffcc00;font-size:26px;margin-bottom:25px;}
-        p{font-size:18px;line-height:1.7;color:#ddd;max-width:400px;margin:0 auto 15px;}
-        .consejo{color:#888;margin-top:35px;font-size:15px;}
-        .boton{margin-top:40px;padding:15px 45px;background:linear-gradient(90deg,#ffcc00,#ff9900);color:#000;border:none;border-radius:12px;font-size:19px;font-weight:bold;cursor:pointer;}
-    </style>
-</head>
-<body>
-    <div class="icono">📶</div>
-    <h1>Fuera de cobertura</h1>
-    <p>No estás conectado al WiFi de Ciber Cesarín.</p>
-    <p class="consejo">Conéctate al WiFi del servicio<br>y vuelve a intentar.</p>
-    <button class="boton" onclick="location.reload()">🔄 Volver a intentar</button>
-</body>
-</html>
-        """.trimIndent()
-
-        view?.loadDataWithBaseURL("https://172.16.1.1/", html, "text/html", "UTF-8", null)
     }
 
     override fun onDestroy() {
