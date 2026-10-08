@@ -13,13 +13,15 @@
     <!-- 📷 Cámara para QR -->
     <uses-permission android:name="android.permission.CAMERA" />
     
-    <!-- ✅ PERMISOS PARA DESCARGAR ARCHIVOS — AGREGADOS -->
+    <!-- ✅ PERMISOS PARA DESCARGAR ARCHIVOS -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     
+    <!-- 🎤 MICRÓFONO — FALTABA ESTE -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <!-- ✅ Radio / segundo plano -->
