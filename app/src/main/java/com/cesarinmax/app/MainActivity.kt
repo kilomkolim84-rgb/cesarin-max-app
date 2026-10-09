@@ -21,14 +21,34 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private val alcanceCorutina = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    
+    // === VARIABLE PARA ABRIR ARCHIVOS/FOTOS ===
+    private var permisoArchivoCallback: ((Uri?) -> Unit)? = null
+    private var archivoCallback: ((Array<Uri>?) -> Unit)? = null
 
     private val permisoCamara = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
+    
+    // === PEDIR PERMISO DE MICRÓFONO ===
+    private val permisoMicrofono = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+    
+    // === SELECCIONAR ARCHIVOS/FOTOS ===
+    private val seleccionarArchivo = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        permisoArchivoCallback?.invoke(uri)
+        permisoArchivoCallback = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Pedir permisos al iniciar
         permisoCamara.launch(Manifest.permission.CAMERA)
+        permisoMicrofono.launch(Manifest.permission.RECORD_AUDIO)
 
         // 🔒 VERIFICACIÓN — SI NO ESTÁ → TU PANTALLA SOLAMENTE
         if (!verificarRed()) {
@@ -99,14 +119,14 @@ class MainActivity : ComponentActivity() {
                 setTextColor(android.graphics.Color.parseColor("#000000"))
                 textSize = 18f
                 setPadding(40, 15, 40, 15)
-                setOnClickListener { recreate() } // ← Vuelve a revisar y entra si ya está
+                setOnClickListener { recreate() }
             }
             addView(btn)
         }
     }
 
     // ==============================================
-    // 🌐 WEBVIEW LIMPIO — SIN PANTALLAS DE MÁS
+    // 🌐 WEBVIEW ARREGLADO — GALERÍA + MICRÓFONO
     // ==============================================
     private fun configurarWebView() {
         webView = WebView(this).apply {
@@ -114,6 +134,7 @@ class MainActivity : ComponentActivity() {
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
             settings.allowFileAccess = true
+            settings.allowContentAccess = true // ✅ IMPORTANTE para acceder a galería
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
             setDownloadListener { url, _, _, _, _ ->
@@ -122,19 +143,32 @@ class MainActivity : ComponentActivity() {
             }
 
             webViewClient = object : WebViewClient() {
-                // ❌ QUITADO EL RETRASO Y LA PANTALLA "FUERA DE COBERTURA"
                 override fun onReceivedSslError(view: WebView?, handler: android.webkit.SslErrorHandler?, error: android.net.http.SslError?) {
                     handler?.proceed()
                 }
             }
 
             webChromeClient = object : android.webkit.WebChromeClient() {
+                // ✅ PERMISOS DE MICRÓFONO Y CÁMARA
                 override fun onPermissionRequest(request: PermissionRequest) {
                     request.grant(request.resources)
                 }
+
+                // ✅ ABRIR SELECCIONADOR DE ARCHIVOS/FOTOS
+                override fun onShowFileChooser(
+                    webView: WebView?,
+                    filePathCallback: android.webkit.ValueCallback<Array<Uri>>?,
+                    fileChooserParams: FileChooserParams?
+                ): Boolean {
+                    archivoCallback = { uris ->
+                        filePathCallback?.onReceiveValue(uris)
+                        archivoCallback = null
+                    }
+                    seleccionarArchivo.launch("image/*")
+                    return true
+                }
             }
 
-            // ✅ CARGA TU PORTAL DIRECTO
             loadUrl("http://172.16.1.1/login.html")
         }
 
