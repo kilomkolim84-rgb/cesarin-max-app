@@ -11,6 +11,7 @@ import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -20,7 +21,10 @@ import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.*
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import kotlinx.coroutines.*
 import java.util.Locale
 
@@ -117,20 +121,18 @@ class MainActivity : ComponentActivity() {
             ) != PackageManager.PERMISSION_GRANTED
         ) return
 
-        clienteUbicacion.getCurrentLocation(
-            LocationRequest.create().apply {
-                priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-                interval = 5000
-                fastestInterval = 2000
-            },
-            null
-        ).addOnSuccessListener { ubicacion: Location? ->
-            ubicacion?.let {
-                val coords = "${it.latitude}, ${it.longitude}"
-                val portapapeles = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                portapapeles.setPrimaryClip(ClipData.newPlainText("ubicacion", coords))
+        val solicitud = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
+            .setMinUpdateIntervalMillis(2000)
+            .build()
+
+        clienteUbicacion.getCurrentLocation(solicitud, null)
+            .addOnSuccessListener { ubicacion: Location? ->
+                ubicacion?.let {
+                    val coords = "${it.latitude}, ${it.longitude}"
+                    val portapapeles = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    portapapeles.setPrimaryClip(ClipData.newPlainText("ubicacion", coords))
+                }
             }
-        }
     }
 
     private fun configurarWebView() {
