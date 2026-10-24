@@ -1,8 +1,12 @@
 package com.cesarinmax.app
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.Location
 import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
@@ -15,6 +19,8 @@ import android.webkit.WebViewClient
 import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.*
 import kotlinx.coroutines.*
 import java.util.Locale
 
@@ -23,36 +29,37 @@ class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private var yaMostroError = false
     private val alcanceCorutina = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private lateinit var clienteUbicacion: FusedLocationProviderClient
 
     private val permisoCamara = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+    
+    private val permisoUbicacion = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        clienteUbicacion = LocationServices.getFusedLocationProviderClient(this)
+        
         permisoCamara.launch(Manifest.permission.CAMERA)
+        permisoUbicacion.launch(Manifest.permission.ACCESS_FINE_LOCATION)
 
-        // 🔒 VERIFICACIÓN — USANDO EL MÉTODO QUE SÍ FUNCIONA
         if (!verificarRed()) {
             setContentView(crearPantallaRestringida())
             return
         }
 
-        // ✅ SI ESTÁ BIEN → CARGA NORMAL
         configurarWebView()
     }
 
-    // ==============================================
-    // ✅ FUNCIÓN DE IP — EXACTAMENTE COMO LA QUE SÍ FUNCIONA
-    // ==============================================
     private fun verificarRed(): Boolean {
         val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        
         if (!wifi.isWifiEnabled) return false
-
         val ipInt = wifi.connectionInfo.ipAddress
         if (ipInt == 0) return false
-
         val ipStr = String.format(
             Locale.getDefault(),
             "%d.%d.%d.%d",
@@ -61,13 +68,9 @@ class MainActivity : ComponentActivity() {
             ipInt shr 16 and 0xFF,
             ipInt shr 24 and 0xFF
         )
-
         return ipStr.startsWith("172.16.1.")
     }
 
-    // ==============================================
-    // ❌ TU PANTALLA DE ACCESO RESTRINGIDO
-    // ==============================================
     private fun crearPantallaRestringida(): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -77,7 +80,7 @@ class MainActivity : ComponentActivity() {
 
             fun texto(texto: String, tam: Float, color: String, negrita: Boolean = false, margen: Int = 10) {
                 val tv = android.widget.TextView(context).apply {
-                    text = texto
+                    this.text = texto
                     textSize = tam
                     setTextColor(android.graphics.Color.parseColor(color))
                     if (negrita) setTypeface(null, android.graphics.Typeface.BOLD)
@@ -107,9 +110,29 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ==============================================
-    // 🌐 TU WEBVIEW — IGUAL QUE LA TENÍAS
-    // ==============================================
+    private fun copiarUbicacionAlPortapapeles() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return
+
+        clienteUbicacion.getCurrentLocation(
+            LocationRequest.create().apply {
+                priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+                interval = 5000
+                fastestInterval = 2000
+            },
+            null
+        ).addOnSuccessListener { ubicacion: Location? ->
+            ubicacion?.let {
+                val coords = "${it.latitude}, ${it.longitude}"
+                val portapapeles = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                portapapeles.setPrimaryClip(ClipData.newPlainText("ubicacion", coords))
+            }
+        }
+    }
+
     private fun configurarWebView() {
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -117,6 +140,14 @@ class MainActivity : ComponentActivity() {
             settings.mediaPlaybackRequiresUserGesture = false
             settings.allowFileAccess = true
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            settings.setGeolocationEnabled(true)
+
+            addJavascriptInterface(object {
+                @JavascriptInterface
+                fun copiarUbicacion() {
+                    runOnUiThread { copiarUbicacionAlPortapapeles() }
+                }
+            }, "Android")
 
             setDownloadListener { url, _, _, _, _ ->
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
