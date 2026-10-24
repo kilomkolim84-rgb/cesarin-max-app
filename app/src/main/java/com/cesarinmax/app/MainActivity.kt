@@ -22,7 +22,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.*
@@ -121,18 +120,16 @@ class MainActivity : ComponentActivity() {
             ) != PackageManager.PERMISSION_GRANTED
         ) return
 
-        val solicitud = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
-            .setMinUpdateIntervalMillis(2000)
-            .build()
-
-        clienteUbicacion.getCurrentLocation(solicitud, null)
-            .addOnSuccessListener { ubicacion: Location? ->
-                ubicacion?.let {
-                    val coords = "${it.latitude}, ${it.longitude}"
-                    val portapapeles = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    portapapeles.setPrimaryClip(ClipData.newPlainText("ubicacion", coords))
-                }
+        clienteUbicacion.getCurrentLocation(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            null
+        ).addOnSuccessListener { ubicacion: Location? ->
+            ubicacion?.let {
+                val coords = "${it.latitude}, ${it.longitude}"
+                val portapapeles = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                portapapeles.setPrimaryClip(ClipData.newPlainText("ubicacion", coords))
             }
+        }
     }
 
     private fun configurarWebView() {
