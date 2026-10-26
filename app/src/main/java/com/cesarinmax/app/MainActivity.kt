@@ -158,14 +158,25 @@ class MainActivity : ComponentActivity() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val url = request?.url.toString()
                     
-                    // Si el enlace termina con ?abrirEnChrome=1 → se abre en el navegador
+                    // Bloquea enlaces raros como fb:// y mándalos al navegador
+                    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            startActivity(intent)
+                        } catch (e: Exception {
+                            // Ignora si no se puede abrir
+                        }
+                        return true
+                    }
+                    
+                    // Si marca ?abrirEnChrome=1 → abrir en navegador
                     if (request?.url?.getQueryParameter("abrirEnChrome") == "1") {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                         startActivity(intent)
                         return true
                     }
                     
-                    // Todo lo demás sigue dentro de la app
+                    // Todo lo demás dentro de la app
                     return super.shouldOverrideUrlLoading(view, request)
                 }
 
