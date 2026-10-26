@@ -154,6 +154,21 @@ class MainActivity : ComponentActivity() {
             }
 
             webViewClient = object : WebViewClient() {
+
+                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                    val url = request?.url.toString()
+                    
+                    // Si el enlace termina con ?abrirEnChrome=1 → se abre en el navegador
+                    if (request?.url?.getQueryParameter("abrirEnChrome") == "1") {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        startActivity(intent)
+                        return true
+                    }
+                    
+                    // Todo lo demás sigue dentro de la app
+                    return super.shouldOverrideUrlLoading(view, request)
+                }
+
                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
                     yaMostroError = false
