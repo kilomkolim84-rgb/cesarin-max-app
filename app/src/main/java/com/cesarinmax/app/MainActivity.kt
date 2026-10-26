@@ -132,6 +132,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun debeAbrirEnExterno(url: String?): Boolean {
+        if (url == null) return false
+        return url.startsWith("fb://") ||
+               url.contains("facebook.com") ||
+               url.contains("web.facebook.com")
+    }
+
+    private fun abrirEnNavegador(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (e: Exception) {
+            // Ignorar
+        }
+    }
+
     private fun configurarWebView() {
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -140,6 +156,8 @@ class MainActivity : ComponentActivity() {
             settings.allowFileAccess = true
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             settings.setGeolocationEnabled(true)
+            settings.setSupportMultipleWindows(false)
+            settings.javaScriptCanOpenWindowsAutomatically = false
 
             addJavascriptInterface(object {
                 @JavascriptInterface
@@ -149,8 +167,7 @@ class MainActivity : ComponentActivity() {
             }, "Android")
 
             setDownloadListener { url, _, _, _, _ ->
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                startActivity(intent)
+                abrirEnNavegador(url)
             }
 
             webViewClient = object : WebViewClient() {
@@ -158,30 +175,23 @@ class MainActivity : ComponentActivity() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val url = request?.url.toString()
                     
-                    // Bloquea enlaces raros como fb:// y mándalos al navegador
-                    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            startActivity(intent)
-                        } catch (e: Exception {
-                            // Ignora si no se puede abrir
-                        }
+                    if (debeAbrirEnExterno(url)) {
+                        abrirEnNavegador(url)
                         return true
                     }
                     
-                    // Si marca ?abrirEnChrome=1 → abrir en navegador
-                    if (request?.url?.getQueryParameter("abrirEnChrome") == "1") {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        startActivity(intent)
-                        return true
-                    }
-                    
-                    // Todo lo demás dentro de la app
                     return super.shouldOverrideUrlLoading(view, request)
                 }
 
                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
+                    
+                    if (debeAbrirEnExterno(url)) {
+                        view?.stopLoading()
+                        url?.let { abrirEnNavegador(it) }
+                        return
+                    }
+                    
                     yaMostroError = false
                     alcanceCorutina.launch {
                         delay(8000)
